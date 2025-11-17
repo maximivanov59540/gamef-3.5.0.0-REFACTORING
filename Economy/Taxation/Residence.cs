@@ -193,6 +193,9 @@ public class Residence : MonoBehaviour
     // Результаты последней проверки потребностей (для интеграции с событиями)
     private List<NeedResult> _lastNeedResults = new List<NeedResult>();
 
+    // 🔥 FIX: Храним ссылку на корутину
+    private Coroutine _consumeNeedsCoroutine;
+
     private void Start()
     {
         // (Получаем ссылки... без изменений)
@@ -217,7 +220,7 @@ public class Residence : MonoBehaviour
             Debug.Log($"[Residence] {gameObject.name} зарегистрирован в PopulationManager: {populationTier}, вместимость: {housingCapacity}");
         }
 
-        StartCoroutine(ConsumeNeedsCoroutine());
+        _consumeNeedsCoroutine = StartCoroutine(ConsumeNeedsCoroutine());
     }
 
     private void OnDestroy()
@@ -227,6 +230,13 @@ public class Residence : MonoBehaviour
         {
             _populationManager.RemoveHousingCapacity(populationTier, housingCapacity);
             Debug.Log($"[Residence] {gameObject.name} снят с регистрации из PopulationManager");
+        }
+
+        // 🔥 FIX: Memory leak - останавливаем корутину при уничтожении
+        if (_consumeNeedsCoroutine != null)
+        {
+            StopCoroutine(_consumeNeedsCoroutine);
+            _consumeNeedsCoroutine = null;
         }
     }
 

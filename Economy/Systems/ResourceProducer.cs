@@ -91,16 +91,20 @@ void Update()
     {
         // "Ленивая" проверка: ждем, пока все "мозги" (синглтоны)
         // не будут готовы.
-        if (RoadManager.Instance == null || WorkforceManager.Instance == null || _gridSystem == null)
+        // 🔥 FIX: Кешируем Instance локально для защиты от race condition
+        var roadManager = RoadManager.Instance;
+        var workforceManager = WorkforceManager.Instance;
+
+        if (roadManager == null || workforceManager == null || _gridSystem == null)
         {
-            // Если хоть кто-то еще не "проснулся", 
+            // Если хоть кто-то еще не "проснулся",
             // просто ждем следующего кадра.
             if (_gridSystem == null) _gridSystem = FindFirstObjectByType<GridSystem>(); // (GridSystem не синглтон, ищем его)
-            return; 
+            return;
         }
 
         // --- Все "мозги" на месте! Инициализируем. ---
-        _roadManager = RoadManager.Instance;
+        _roadManager = roadManager;
         // ✅ НОВАЯ ЛОГИКА: Если есть BuildingResourceRouting, используем новую систему
         if (_routing != null)
         {
@@ -179,8 +183,10 @@ void Update()
 
 
     // --- Шаг 2: Логика "Рабочей Силы" (с типизированными работниками) ---
-    _currentWorkforceCap = WorkforceManager.Instance != null
-        ? WorkforceManager.Instance.GetWorkforceRatio(requiredWorkerType)
+    // 🔥 FIX: Кешируем Instance локально для защиты от race condition
+    var workforceManager = WorkforceManager.Instance;
+    _currentWorkforceCap = workforceManager != null
+        ? workforceManager.GetWorkforceRatio(requiredWorkerType)
         : 1.0f;
 
 

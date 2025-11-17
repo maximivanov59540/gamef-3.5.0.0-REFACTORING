@@ -91,11 +91,13 @@ public class BuildingResourceRouting : MonoBehaviour
     void OnDestroy()
     {
         // ✅ НОВОЕ: Отменяем регистрацию при уничтожении здания
-        if (_enableCoordination && ResourceCoordinator.Instance != null && outputDestination != null)
+        // 🔥 FIX: Кешируем Instance локально для защиты от race condition
+        var coordinator = ResourceCoordinator.Instance;
+        if (_enableCoordination && coordinator != null && outputDestination != null)
         {
             if (outputDestination is MonoBehaviour consumerMB)
             {
-                ResourceCoordinator.Instance.UnregisterSupplyRoute(this, consumerMB);
+                coordinator.UnregisterSupplyRoute(this, consumerMB);
             }
         }
     }
@@ -154,11 +156,13 @@ public class BuildingResourceRouting : MonoBehaviour
     public void RefreshRoutes()
     {
         // ✅ НОВОЕ: Отменяем старую регистрацию перед обновлением маршрута
-        if (_enableCoordination && ResourceCoordinator.Instance != null && outputDestination != null)
+        // 🔥 FIX: Кешируем Instance локально для защиты от race condition
+        var coordinator = ResourceCoordinator.Instance;
+        if (_enableCoordination && coordinator != null && outputDestination != null)
         {
             if (outputDestination is MonoBehaviour oldConsumerMB)
             {
-                ResourceCoordinator.Instance.UnregisterSupplyRoute(this, oldConsumerMB);
+                coordinator.UnregisterSupplyRoute(this, oldConsumerMB);
             }
         }
 
@@ -549,10 +553,12 @@ public class BuildingResourceRouting : MonoBehaviour
         Debug.Log($"[Routing] {gameObject.name}: Найдено {matchingConsumers.Count} потребителей {producedType}. Проверяю доступность по дорогам...");
 
         // ✅ АДАПТИВНАЯ КООРДИНАЦИЯ: Проверяем соотношение производителей/потребителей
-        if (_enableCoordination && ResourceCoordinator.Instance != null)
+        // 🔥 FIX: Кешируем Instance локально для защиты от race condition
+        var coordinator = ResourceCoordinator.Instance;
+        if (_enableCoordination && coordinator != null)
         {
             // Проверяем, нужно ли использовать жесткое резервирование 1:1
-            bool useExclusiveReservation = ResourceCoordinator.Instance.ShouldUseExclusiveReservation(this, producedType);
+            bool useExclusiveReservation = coordinator.ShouldUseExclusiveReservation(this, producedType);
 
             if (useExclusiveReservation)
             {
@@ -562,7 +568,7 @@ public class BuildingResourceRouting : MonoBehaviour
 
                 foreach (var consumer in matchingConsumers)
                 {
-                    if (ResourceCoordinator.Instance.IsConsumerReserved(consumer, this))
+                    if (coordinator.IsConsumerReserved(consumer, this))
                     {
                         reservedConsumers.Add(consumer);
                     }
