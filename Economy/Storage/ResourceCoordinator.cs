@@ -314,11 +314,15 @@ public class ResourceCoordinator : MonoBehaviour
     {
         var producers = new List<MonoBehaviour>();
 
-        // Находим все здания с BuildingOutputInventory
-        var allOutputs = UnityEngine.Object.FindObjectsByType<BuildingOutputInventory>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allOutputs = BuildingRegistry.Instance?.GetAllOutputs();
+        if (allOutputs == null || allOutputs.Count == 0)
+            return producers;
 
-        foreach (var output in allOutputs)
+        for (int i = 0; i < allOutputs.Count; i++)
         {
+            var output = allOutputs[i];
+
             // Проверяем тип ресурса
             if (output.GetProvidedResourceType() != resourceType)
                 continue;
@@ -340,18 +344,22 @@ public class ResourceCoordinator : MonoBehaviour
     {
         var consumers = new List<MonoBehaviour>();
 
-        // Находим все здания с BuildingInputInventory
-        var allInputs = UnityEngine.Object.FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allInputs = BuildingRegistry.Instance?.GetAllInputs();
+        if (allInputs == null || allInputs.Count == 0)
+            return consumers;
 
-        foreach (var input in allInputs)
+        for (int i = 0; i < allInputs.Count; i++)
         {
+            var input = allInputs[i];
+
             // Проверяем, требует ли это здание данный ресурс
             bool needsResource = false;
             if (input.requiredResources != null)
             {
-                foreach (var slot in input.requiredResources)
+                for (int j = 0; j < input.requiredResources.Count; j++)
                 {
-                    if (slot.resourceType == resourceType)
+                    if (input.requiredResources[j].resourceType == resourceType)
                     {
                         needsResource = true;
                         break;
@@ -374,6 +382,7 @@ public class ResourceCoordinator : MonoBehaviour
 
     /// <summary>
     /// Очищает устаревшие связи
+    /// 🚀 MEMORY LEAK FIX: Улучшенная очистка с проверкой Unity fake null
     /// </summary>
     private void CleanupStaleRoutes()
     {
@@ -381,30 +390,67 @@ public class ResourceCoordinator : MonoBehaviour
 
         foreach (var kvp in _activeSupplyRoutes)
         {
+            var consumer = kvp.Key;
             var route = kvp.Value;
 
             // Удаляем если устарела
             if (Time.time - route.lastUpdateTime > ROUTE_TIMEOUT)
             {
-                toRemove.Add(kvp.Key);
+                toRemove.Add(consumer);
                 continue;
             }
 
-            // Удаляем если здание уничтожено
-            if (route.producer == null || route.consumer == null)
+            // 🚀 FIX: Проверка Unity fake null (когда объект уничтожен но ссылка не null)
+            // Используем ReferenceEquals для проверки настоящего null
+            bool producerDestroyed = route.producer == null || !route.producer;
+            bool consumerDestroyed = consumer == null || !consumer;
+
+            if (producerDestroyed || consumerDestroyed)
             {
-                toRemove.Add(kvp.Key);
+                toRemove.Add(consumer);
             }
         }
 
+        // Удаляем все найденные устаревшие связи
         foreach (var consumer in toRemove)
         {
             if (_activeSupplyRoutes.TryGetValue(consumer, out SupplyRoute route))
             {
-                _producerToConsumer.Remove(route.producer);
+                // Удаляем из обоих словарей
+                if (route.producer != null)
+                {
+                    _producerToConsumer.Remove(route.producer);
+                }
                 _activeSupplyRoutes.Remove(consumer);
-                Debug.Log($"[ResourceCoordinator] 🧹 Очищена устаревшая связь: {route.producer?.name} → {consumer?.name}");
+
+                Debug.Log($"[ResourceCoordinator] 🧹 Очищена устаревшая связь: {route.producer?.name ?? "null"} → {consumer?.name ?? "null"}");
             }
+        }
+
+        // 🚀 FIX: Дополнительная очистка _producerToConsumer от уничтоженных производителей
+        var deadProducers = new List<MonoBehaviour>();
+        foreach (var kvp in _producerToConsumer)
+        {
+            var producer = kvp.Key;
+            var consumer = kvp.Value;
+
+            bool producerDestroyed = producer == null || !producer;
+            bool consumerDestroyed = consumer == null || !consumer;
+
+            if (producerDestroyed || consumerDestroyed)
+            {
+                deadProducers.Add(producer);
+            }
+        }
+
+        foreach (var producer in deadProducers)
+        {
+            _producerToConsumer.Remove(producer);
+        }
+
+        if (toRemove.Count > 0 || deadProducers.Count > 0)
+        {
+            Debug.Log($"[ResourceCoordinator] 🧹 Очистка завершена: удалено {toRemove.Count} маршрутов, {deadProducers.Count} производителей");
         }
     }
 

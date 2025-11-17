@@ -35,11 +35,22 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     private void Awake()
     {
         _identity = GetComponent<BuildingIdentity>();
-        
+
         if (_identity == null)
         {
             Debug.LogWarning($"[BuildingInputInventory] {gameObject.name} не имеет BuildingIdentity!");
         }
+    }
+
+    // 🚀 PERFORMANCE FIX: Автоматическая регистрация в BuildingRegistry
+    private void OnEnable()
+    {
+        BuildingRegistry.Instance?.RegisterInput(this);
+    }
+
+    private void OnDisable()
+    {
+        BuildingRegistry.Instance?.UnregisterInput(this);
     }
 
     private void Start()

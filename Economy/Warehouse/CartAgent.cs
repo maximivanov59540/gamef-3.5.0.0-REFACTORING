@@ -595,7 +595,13 @@ public class CartAgent : MonoBehaviour
     /// </summary>
     private bool HasAnyCargo()
     {
-        return _cargoSlots.Any(slot => !slot.IsEmpty);
+        // 🚀 PERFORMANCE FIX: Заменил LINQ .Any() на простой цикл (убираем GC аллокации)
+        for (int i = 0; i < _cargoSlots.Count; i++)
+        {
+            if (!_cargoSlots[i].IsEmpty)
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -603,7 +609,13 @@ public class CartAgent : MonoBehaviour
     /// </summary>
     private bool IsAllSlotsEmpty()
     {
-        return _cargoSlots.All(slot => slot.IsEmpty);
+        // 🚀 PERFORMANCE FIX: Заменил LINQ .All() на простой цикл (убираем GC аллокации)
+        for (int i = 0; i < _cargoSlots.Count; i++)
+        {
+            if (!_cargoSlots[i].IsEmpty)
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -739,8 +751,10 @@ public class CartAgent : MonoBehaviour
     /// </summary>
     private bool HasProducerForResource(ResourceType resourceType)
     {
-        // Находим все здания с BuildingOutputInventory
-        BuildingOutputInventory[] allOutputs = FindObjectsByType<BuildingOutputInventory>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allOutputs = BuildingRegistry.Instance?.GetAllOutputs();
+
+        if (allOutputs == null) return false;
 
         foreach (var output in allOutputs)
         {

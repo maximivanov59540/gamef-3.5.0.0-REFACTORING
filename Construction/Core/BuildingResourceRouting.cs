@@ -298,10 +298,10 @@ public class BuildingResourceRouting : MonoBehaviour
 
         Debug.Log($"[Routing] {gameObject.name}: Ищу производителя {neededType}...");
 
-        // 2. Находим все здания с BuildingOutputInventory
-        BuildingOutputInventory[] allOutputs = FindObjectsByType<BuildingOutputInventory>(FindObjectsSortMode.None);
+        // 2. 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allOutputs = BuildingRegistry.Instance?.GetAllOutputs();
 
-        if (allOutputs.Length == 0)
+        if (allOutputs == null || allOutputs.Count == 0)
         {
             Debug.Log($"[Routing] {gameObject.name}: Не найдено ни одного производителя на карте");
             return null;
@@ -509,10 +509,10 @@ public class BuildingResourceRouting : MonoBehaviour
 
         Debug.Log($"[Routing] {gameObject.name}: Ищу потребителя {producedType}...");
 
-        // 2. Находим все здания с BuildingInputInventory
-        BuildingInputInventory[] allInputs = FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
+        // 2. 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allInputs = BuildingRegistry.Instance?.GetAllInputs();
 
-        if (allInputs.Length == 0)
+        if (allInputs == null || allInputs.Count == 0)
         {
             Debug.Log($"[Routing] {gameObject.name}: Не найдено ни одного потребителя на карте");
             return null;
@@ -704,8 +704,10 @@ public class BuildingResourceRouting : MonoBehaviour
         // Подсчитываем текущую нагрузку на потребителя
         int currentLoad = CountSuppliersForConsumer(currentConsumer);
 
-        // Ищем всех потребителей данного ресурса
-        BuildingInputInventory[] allInputs = FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allInputs = BuildingRegistry.Instance?.GetAllInputs();
+
+        if (allInputs == null) return false;
 
         foreach (var input in allInputs)
         {
@@ -1197,8 +1199,10 @@ public class BuildingResourceRouting : MonoBehaviour
             return;
         }
 
-        // Находим всех потребителей этого ресурса
-        BuildingInputInventory[] allInputs = FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+        var allInputs = BuildingRegistry.Instance?.GetAllInputs();
+        if (allInputs == null) return;
+
         var matchingConsumers = new System.Collections.Generic.List<BuildingInputInventory>();
 
         foreach (var input in allInputs)

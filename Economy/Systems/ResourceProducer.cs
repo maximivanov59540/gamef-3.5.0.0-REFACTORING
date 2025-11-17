@@ -292,16 +292,16 @@ private void FindWarehouseAccess()
 
     Debug.Log($"[Producer] {gameObject.name}: Нашел {myAccessPoints.Count} точек доступа к дороге."); // <-- ЛОГ 2
 
-    // 3. Найти все склады
-    Warehouse[] allWarehouses = FindObjectsByType<Warehouse>(FindObjectsSortMode.None);
-    if (allWarehouses.Length == 0)
+    // 3. 🚀 PERFORMANCE FIX: Используем BuildingRegistry вместо FindObjectsByType
+    var allWarehouses = BuildingRegistry.Instance?.GetAllWarehouses();
+    if (allWarehouses == null || allWarehouses.Count == 0)
     {
         Debug.LogWarning($"[Producer] {gameObject.name}: Не нашел НИ ОДНОГО склада (Warehouse) на карте. Поиск склада отменен.");
         _hasWarehouseAccess = false;
         return; // <-- ВЫХОД 3
     }
 
-    Debug.Log($"[Producer] {gameObject.name}: Нашел {allWarehouses.Length} складов на карте."); // <-- ЛОГ 3
+    Debug.Log($"[Producer] {gameObject.name}: Нашел {allWarehouses.Count} складов на карте."); // <-- ЛОГ 3
 
     // 4. Рассчитать ВСЕ дистанции от НАС
     var distancesFromMe = LogisticsPathfinder.Distances_BFS_Multi(myAccessPoints, 1000, roadGraph);
