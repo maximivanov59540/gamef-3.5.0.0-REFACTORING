@@ -68,24 +68,31 @@ This is a **Unity-based city-building simulation game** featuring deep economic 
 ## Directory Structure
 
 ```
-/home/user/gamef-3.4.5.6-claude/
+/home/user/gamef-3.4.5.8-claude/
 │
 ├── Construction/              # Building & construction systems
 │   ├── Core/                  # Core building mechanics
-│   │   ├── BuildingManager.cs           (1048 lines) - Central building operations
-│   │   ├── GridSystem.cs                (366 lines)  - Grid world management
-│   │   ├── BuildingData.cs              - ScriptableObject for building config
-│   │   ├── BuildingIdentity.cs          - Component for building metadata
-│   │   ├── SelectionManager.cs          (270 lines)  - Selection & visual feedback
-│   │   ├── BuildingVisuals.cs           - Material state management
-│   │   └── GhostBuildingCollider.cs     - Collision detection for placement
+│   │   ├── BuildingManager.cs           (1306 lines) - Central building operations
+│   │   ├── BuildingResourceRouting.cs   (1339 lines) - Resource routing & logistics coordination
+│   │   ├── GridSystem.cs                (365 lines)  - Grid world management
+│   │   ├── BuildingData.cs              (59 lines)   - ScriptableObject for building config
+│   │   ├── BuildingIdentity.cs          (42 lines)   - Component for building metadata
+│   │   ├── SelectionManager.cs          (269 lines)  - Selection & visual feedback
+│   │   ├── BuildingVisuals.cs           (96 lines)   - Material state management
+│   │   ├── GhostBuildingCollider.cs     (26 lines)   - Collision detection for placement
+│   │   ├── BlueprintManager.cs          (62 lines)   - Blueprint mode management
+│   │   ├── BuildOrchestrator.cs         (109 lines)  - Building construction orchestration
+│   │   ├── GridCellData.cs              (35 lines)   - Grid cell data structure
+│   │   ├── GridVisualizer.cs            (88 lines)   - Grid visualization tools
+│   │   └── BuildSlot.cs                 (21 lines)   - Individual build slot component
 │   │
 │   ├── Input/                 # Player input handling
 │   │   ├── PlayerInputController.cs     (174 lines)  - State machine coordinator
 │   │   ├── IInputState.cs               - State pattern interface
-│   │   └── States/            # 12 input state implementations
+│   │   └── States/            # 13 input state implementations
 │   │       ├── State_None.cs
 │   │       ├── State_Building.cs
+│   │       ├── State_BuildingUpgrade.cs
 │   │       ├── State_Moving.cs
 │   │       ├── State_Deleting.cs
 │   │       ├── State_Upgrading.cs
@@ -102,24 +109,22 @@ This is a **Unity-based city-building simulation game** featuring deep economic 
 │   │   └── PlacementValidation.cs       - Visual feedback for placement
 │   │
 │   ├── GroupOps/              # Mass operations
-│   │   ├── GroupOperationHandler.cs     - Batch copy/move/delete
-│   │   └── MassBuildHandler.cs          - Multi-placement logic
+│   │   └── GroupOperationHandler.cs     (620 lines)  - Batch copy/move/delete
 │   │
-│   ├── Modular Buildings/     # Farm modules system
+│   ├── Modular Buildings/     # Farm modules & zoned areas system
 │   │   ├── ModularBuilding.cs           - Main building with slots
 │   │   ├── BuildingModule.cs            - Module component (fields, pastures)
-│   │   └── ModulePlacementUI.cs         - UI for module placement
-│   │
-│   ├── Zoned Areas/           # Monastery/temple zones
-│   │   ├── ZonedArea.cs                 - Main zone with build slots
-│   │   └── BuildSlot.cs                 - Individual slot component
+│   │   └── ZonedArea.cs                 - Monastery/temple zones with build slots
 │   │
 │   └── Roads/                 # Road network system
-│       ├── RoadManager.cs               (600+ lines) - Road graph & pathfinding
+│       ├── RoadManager.cs               (234 lines)  - Road graph management
 │       ├── RoadData.cs                  - ScriptableObject for road types
 │       ├── RoadTile.cs                  - Individual road component
 │       ├── RoadBuildHandler.cs          - Road placement logic
-│       └── RoadOperationHandler.cs      - Road deletion/upgrade
+│       ├── RoadOperationHandler.cs      - Road deletion/upgrade
+│       ├── RoadCoverageVisualizer.cs    (540 lines)  - Visual coverage display
+│       ├── LogisticsPathfinder.cs       (302 lines)  - BFS pathfinding for carts
+│       └── RoadPathfinder.cs            (291 lines)  - General road pathfinding
 │
 ├── Economy/                   # Economic simulation systems
 │   ├── Core/                  # Core economy types
@@ -128,30 +133,38 @@ This is a **Unity-based city-building simulation game** featuring deep economic 
 │   │   └── StorageData.cs               - Storage info (amount, capacity)
 │   │
 │   ├── Systems/               # Manager systems
-│   │   ├── ResourceManager.cs           (168 lines)  - Global resource storage (Singleton)
-│   │   ├── EconomyManager.cs            (86 lines)   - Upkeep & debt system
-│   │   ├── MoneyManager.cs              (82 lines)   - Currency management (Singleton)
-│   │   ├── ResourceProducer.cs          (426 lines)  - Production cycles & workforce
-│   │   ├── PopulationManager.cs         - Population tracking
-│   │   └── TaxManager.cs                (79 lines)   - Tax collection
+│   │   ├── ResourceManager.cs           (167 lines)  - Global resource storage (Singleton)
+│   │   ├── EconomyManager.cs            (85 lines)   - Upkeep & debt system
+│   │   ├── ResourceProducer.cs          (454 lines)  - Production cycles & workforce
+│   │   ├── PopulationManager.cs         (245 lines)  - Population tracking & tiers
+│   │   ├── PopulationTier.cs            (11 lines)   - Population tier enum
+│   │   └── WorkforceManager.cs          (261 lines)  - Workforce allocation & management
 │   │
 │   ├── Storage/               # Resource storage & logistics
 │   │   ├── IResourceProvider.cs         - Interface for resource sources
 │   │   ├── IResourceReceiver.cs         - Interface for resource consumers
 │   │   ├── ResourceProvider.cs          - Building output storage
-│   │   └── ResourceReceiver.cs          - Building input storage
+│   │   ├── ResourceReceiver.cs          - Building input storage
+│   │   └── ResourceCoordinator.cs       (423 lines)  - Coordinates resource distribution network
 │   │
 │   ├── Warehouse/             # Warehouse & cart logistics
 │   │   ├── WarehouseManager.cs          - Warehouse building logic
-│   │   ├── CartAgent.cs                 (500+ lines) - Cart AI state machine
-│   │   ├── LogisticsPathfinder.cs       - Road-based pathfinding (BFS)
+│   │   ├── CartAgent.cs                 (1238 lines) - Cart AI state machine
+│   │   ├── LogisticsPathfinder.cs       - Road-based pathfinding (in Roads/)
 │   │   └── WarehouseQueue.cs            - Queue system for carts
 │   │
 │   ├── Money/                 # Currency management
 │   │   └── MoneyManager.cs              - Gold/currency singleton
 │   │
 │   ├── Taxation/              # Tax & happiness systems
-│   │   └── TaxManager.cs                - Per-second tax income
+│   │   ├── TaxManager.cs                - Per-second tax income
+│   │   └── Residence.cs                 (468 lines)  - Residential building component
+│   │
+│   ├── Event/                 # Event system (disasters, challenges)
+│   │   ├── EventManager.cs              (431 lines)  - Central event controller (Singleton)
+│   │   ├── EventAffected.cs             - Component for buildings affected by events
+│   │   ├── BuildingEvent.cs             - Building-specific event data
+│   │   └── EventType.cs                 - Event types enum (Pandemic, Riot)
 │   │
 │   ├── Aura/                  # Building influence/coverage
 │   │   ├── AuraManager.cs               - Global aura coordinator
@@ -167,11 +180,11 @@ This is a **Unity-based city-building simulation game** featuring deep economic 
 │   └── CameraController.cs              - Camera movement & zoom
 │
 └── UI/                        # General UI systems
-    ├── UIManager.cs                     - Main UI coordinator
+    ├── UIManager.cs                     (314 lines)  - Main UI coordinator
     └── NotificationManager.cs           - In-game notifications
 ```
 
-**File Count:** ~80+ C# scripts, 101 .meta files
+**File Count:** 90 C# scripts, 90 .meta files
 
 ---
 
@@ -197,6 +210,8 @@ void Awake()
 - `PlayerInputController.Instance`
 - `AuraManager.Instance`
 - `EconomyManager.Instance`
+- `EventManager.Instance`
+- `WorkforceManager.Instance`
 
 ### 2. **State Pattern**
 Input system uses clean state machine:
@@ -209,19 +224,20 @@ public interface IInputState
 }
 ```
 
-**12 Input Modes:**
+**13 Input Modes:**
 1. `None` - Idle/camera control
 2. `Building` - Place buildings
-3. `Moving` - Relocate buildings
-4. `Deleting` - Remove buildings
-5. `Upgrading` - Convert blueprints
-6. `Copying` - Duplicate buildings
-7. `Selecting` - Multi-select
-8. `GroupCopying` - Batch copy
-9. `GroupMoving` - Batch move
-10. `RoadBuilding` - Build roads
-11. `RoadOperation` - Delete/upgrade roads
-12. `PlacingModule` - Add farm modules
+3. `BuildingUpgrade` - Upgrade building type/tier
+4. `Moving` - Relocate buildings
+5. `Deleting` - Remove buildings
+6. `Upgrading` - Convert blueprints
+7. `Copying` - Duplicate buildings
+8. `Selecting` - Multi-select
+9. `GroupCopying` - Batch copy
+10. `GroupMoving` - Batch move
+11. `RoadBuilding` - Build roads
+12. `RoadOperation` - Delete/upgrade roads
+13. `PlacingModule` - Add farm modules
 
 ### 3. **Manager Pattern**
 Dedicated managers for each subsystem:
@@ -232,6 +248,9 @@ Dedicated managers for each subsystem:
 - **TaxManager** - Tax collection
 - **RoadManager** - Road network
 - **AuraManager** - Building influence
+- **EventManager** - Game events (pandemics, riots)
+- **WorkforceManager** - Population & workforce allocation
+- **PopulationManager** - Population tracking
 
 ### 4. **Component-Based Architecture**
 Unity's ECS approach:
@@ -495,6 +514,66 @@ Dictionary<Vector2Int, RoadTile> roadGraph;
 
 ---
 
+### 12. Event System (`EventManager.cs`)
+
+**Purpose:** Manages random game events that affect buildings and gameplay.
+
+**Event Types:**
+1. **Pandemic** - Disease outbreak affecting residential buildings
+2. **Riot** - Unrest affecting residential and production buildings
+
+**Key Features:**
+- Configurable event chances and durations
+- Happiness-based probability (higher happiness = lower event chance)
+- Event unlocking system (tied to building construction)
+- Per-building event tracking
+- Automatic event cleanup and management
+
+**Event Workflow:**
+```
+1. Periodic event checks (configurable interval)
+2. Calculate event probability based on happiness
+3. Select random affected buildings
+4. Apply event effects (production penalties, population impact)
+5. Auto-cleanup after duration expires
+```
+
+**Configuration:**
+- Base pandemic chance: 7%
+- Base riot chance: 7%
+- Pandemic duration: 5 minutes
+- Riot duration: 3 minutes
+- Happiness multiplier affects all event chances
+
+---
+
+### 13. Resource Routing System (`BuildingResourceRouting.cs`)
+
+**Purpose:** Advanced logistics coordination for production buildings.
+
+**Key Features:**
+- **Direct routing** - Specify exact input sources and output destinations
+- **Auto-discovery** - Find nearest warehouses automatically
+- **Round-robin distribution** - Balance deliveries across multiple consumers
+- **Producer coordination** - Avoid duplicate deliveries from multiple sources
+- **Priority modes** - Prefer direct supply chains over warehouse routes
+
+**Routing Options:**
+- `outputDestinationTransform` - Where to deliver output (or null for auto)
+- `inputSourceTransform` - Where to get input (or null for auto)
+- `preferDirectSupply` - Use direct producer-to-consumer links
+- `preferDirectDelivery` - Bypass warehouse when possible
+- `enableRoundRobin` - Rotate between multiple destinations
+- `enableCoordination` - Coordinate with other producers
+
+**Use Cases:**
+- Farm → Bakery direct supply chains
+- Sawmill → Warehouse → Carpentry workshop flows
+- Multi-producer load balancing
+- Preventing oversupply/undersupply issues
+
+---
+
 ## Coding Conventions
 
 ### Naming Conventions
@@ -632,7 +711,7 @@ if (buildingData.buildingPrefab == null)
 
 ### Git Workflow
 
-**Current Branch:** `claude/claude-md-mi337acfse8389g6-01XG6JVdssjJH6j7yTYpaUUQ`
+**Current Branch:** `claude/claude-md-mi3numleb7lz4u4g-01T9XDYUfigBitqfw7ZEATyn`
 
 **Commit Messages:**
 - English preferred for international collaboration
@@ -647,7 +726,7 @@ git commit -m "Fix: Prevent building placement when in debt
 - Add debt check in EnterBuildMode()
 - Show notification to player when blocked
 - Refs #123"
-git push -u origin claude/claude-md-mi337acfse8389g6-01XG6JVdssjJH6j7yTYpaUUQ
+git push -u origin claude/claude-md-mi3numleb7lz4u4g-01T9XDYUfigBitqfw7ZEATyn
 ```
 
 ### Building & Testing
@@ -1030,25 +1109,41 @@ Before committing changes:
 
 ### Must-Read Files (Start Here)
 
-1. **Construction/Core/BuildingManager.cs** (1048 lines)
+1. **Construction/Core/BuildingManager.cs** (1306 lines)
    - Central building operations
    - Entry point for understanding building system
 
-2. **Construction/Input/PlayerInputController.cs** (174 lines)
-   - State machine coordinator
-   - Shows all input modes
+2. **Construction/Core/BuildingResourceRouting.cs** (1339 lines)
+   - Advanced resource routing and logistics
+   - Critical for understanding supply chains
 
-3. **Economy/Systems/ResourceManager.cs** (168 lines)
-   - Global resource storage
-   - Key for understanding economy
+3. **Economy/Warehouse/CartAgent.cs** (1238 lines)
+   - Cart AI state machine
+   - Complex logistics behavior
 
-4. **Economy/Systems/ResourceProducer.cs** (426 lines)
+4. **Economy/Systems/ResourceProducer.cs** (454 lines)
    - Production cycle logic
    - Complex efficiency calculations
 
-5. **Construction/Core/GridSystem.cs** (366 lines)
+5. **Construction/Core/GridSystem.cs** (365 lines)
    - Grid world management
    - Foundation for placement system
+
+6. **Construction/Input/PlayerInputController.cs** (174 lines)
+   - State machine coordinator
+   - Shows all input modes
+
+7. **Economy/Systems/ResourceManager.cs** (167 lines)
+   - Global resource storage
+   - Key for understanding economy
+
+8. **Event/EventManager.cs** (431 lines)
+   - Game events system
+   - Random events affecting gameplay
+
+9. **Storage/ResourceCoordinator.cs** (423 lines)
+   - Network-wide resource coordination
+   - Advanced distribution logic
 
 ### Critical Interfaces
 
@@ -1068,6 +1163,7 @@ Before committing changes:
 All in `Construction/Input/States/`:
 - State_None.cs
 - State_Building.cs
+- State_BuildingUpgrade.cs
 - State_Moving.cs
 - State_Deleting.cs
 - State_Upgrading.cs
@@ -1081,9 +1177,17 @@ All in `Construction/Input/States/`:
 
 ### Complex Systems
 
-- **Economy/Warehouse/CartAgent.cs** (500+ lines) - Cart AI
-- **Economy/Warehouse/LogisticsPathfinder.cs** - BFS pathfinding
-- **Construction/Roads/RoadManager.cs** (600+ lines) - Road network
+- **Construction/Core/BuildingResourceRouting.cs** (1339 lines) - Resource routing
+- **Economy/Warehouse/CartAgent.cs** (1238 lines) - Cart AI
+- **Construction/GroupOps/GroupOperationHandler.cs** (620 lines) - Batch operations
+- **Construction/Roads/RoadCoverageVisualizer.cs** (540 lines) - Coverage visualization
+- **Economy/Taxation/Residence.cs** (468 lines) - Residential buildings
+- **Economy/Event/EventManager.cs** (431 lines) - Event system
+- **Economy/Storage/ResourceCoordinator.cs** (423 lines) - Resource coordination
+- **Construction/Roads/LogisticsPathfinder.cs** (302 lines) - BFS pathfinding for logistics
+- **Construction/Roads/RoadPathfinder.cs** (291 lines) - General road pathfinding
+- **Economy/Systems/WorkforceManager.cs** (261 lines) - Workforce management
+- **Construction/Roads/RoadManager.cs** (234 lines) - Road network
 - **Economy/Aura/AuraManager.cs** - Influence system
 
 ---
@@ -1216,8 +1320,8 @@ _ghostBuilding.layer = LayerMask.NameToLayer("Ghost");
 ## Contact & Contribution
 
 **Development Team:** Russian-speaking
-**Repository:** `gamef-3.4.5.6-claude`
-**Current Branch:** `claude/claude-md-mi337acfse8389g6-01XG6JVdssjJH6j7yTYpaUUQ`
+**Repository:** `gamef-3.4.5.8-claude`
+**Current Branch:** `claude/claude-md-mi3numleb7lz4u4g-01T9XDYUfigBitqfw7ZEATyn`
 
 **For AI Assistants:**
 - Always read this file before making significant changes
@@ -1227,6 +1331,37 @@ _ghostBuilding.layer = LayerMask.NameToLayer("Ghost");
 
 ---
 
+## Changelog
+
+### 2025-11-17 - Version 1.1.0 - Major Update
+- Updated directory path from `gamef-3.4.5.6-claude` to `gamef-3.4.5.8-claude`
+- Updated current branch reference
+- Added Event system documentation (EventManager, EventAffected, BuildingEvent, EventType)
+- Added BuildingResourceRouting system (1339 lines) - advanced logistics
+- Added new core files: BlueprintManager, BuildOrchestrator, GridCellData, GridVisualizer
+- Added ResourceCoordinator (423 lines) for network-wide coordination
+- Added WorkforceManager (261 lines) and PopulationTier
+- Added Residence.cs (468 lines) for residential buildings
+- Added State_BuildingUpgrade to input states (now 13 total)
+- Updated file line counts throughout document
+- Split pathfinding into LogisticsPathfinder and RoadPathfinder
+- Added RoadCoverageVisualizer (540 lines)
+- Updated file count to 90 C# scripts
+- Reorganized directory structure (Zoned Areas now in Modular Buildings)
+- Updated Manager Pattern section with new managers
+- Updated Singleton list with EventManager and WorkforceManager
+- Enhanced Key Files Reference section with prioritized list
+
+### 2025-11-17 - Version 1.0.0 - Initial Creation
+- Comprehensive documentation of codebase structure
+- Architecture and design pattern analysis
+- Core systems explanation
+- Coding conventions guide
+- Common tasks and troubleshooting
+- AI assistant-specific notes
+
+---
+
 **Last Updated:** 2025-11-17
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Maintained By:** AI Assistant (Claude)
