@@ -21,15 +21,14 @@ public class UI_ResourceBalancePanel : MonoBehaviour
     // --- Словари для хранения баланса (в минуту) ---
     private Dictionary<ResourceType, float> _productionBalance = new Dictionary<ResourceType, float>();
     private Dictionary<ResourceType, float> _consumptionBalance = new Dictionary<ResourceType, float>();
-    
-    private WorkforceManager _workforceManager;
+
+    // УДАЛЕНО: WorkforceManager - теперь используем ResourceManager.Instance.Population
 
     void Start()
     {
-        _workforceManager = WorkforceManager.Instance;
-        if (_workforceManager == null)
+        if (ResourceManager.Instance == null || ResourceManager.Instance.Population == null)
         {
-            Debug.LogError("[UI_ResourceBalance] Не найден WorkforceManager! Панель не будет работать.");
+            Debug.LogError("[UI_ResourceBalance] Не найден ResourceManager.Population! Панель не будет работать.");
             enabled = false;
         }
     }
@@ -51,13 +50,13 @@ public class UI_ResourceBalancePanel : MonoBehaviour
     /// </summary>
     private void CalculateBalance()
     {
-        if (_workforceManager == null) return;
+        if (ResourceManager.Instance == null || ResourceManager.Instance.Population == null) return;
 
         // Очищаем старые данные
         _productionBalance.Clear();
         _consumptionBalance.Clear();
 
-        List<ResourceProducer> allProducers = _workforceManager.GetAllProducers();
+        List<ResourceProducer> allProducers = ResourceManager.Instance.Population.GetAllProducers();
 
         foreach (var producer in allProducers)
         {

@@ -179,7 +179,7 @@ public class Residence : MonoBehaviour
     private ResourceManager _resourceManager;
     private TaxManager _taxManager;
     private HappinessManager _happinessManager;
-    private PopulationManager _populationManager;
+    // УДАЛЕНО: PopulationManager теперь доступен через ResourceManager.Instance.Population
 
     // Текущий налог (для плавного начисления через TaxManager)
     private float _currentTax;
@@ -204,20 +204,19 @@ public class Residence : MonoBehaviour
         _resourceManager = ResourceManager.Instance;
         _taxManager = TaxManager.Instance;
         _happinessManager = HappinessManager.Instance;
-        _populationManager = PopulationManager.Instance;
 
-        if (_auraManager == null || _resourceManager == null || _taxManager == null || _happinessManager == null || _populationManager == null)
+        if (_auraManager == null || _resourceManager == null || _taxManager == null || _happinessManager == null || _resourceManager.Population == null)
         {
             Debug.LogError($"[Residence] на {gameObject.name} не смог найти один из 'мозгов' (Managers). Экономика сломана.");
             this.enabled = false;
             return;
         }
 
-        // Регистрируем жилье в PopulationManager
+        // Регистрируем жилье в Population (теперь в ResourceManager)
         if (!_identity.isBlueprint)
         {
-            _populationManager.AddHousingCapacity(populationTier, housingCapacity);
-            Debug.Log($"[Residence] {gameObject.name} зарегистрирован в PopulationManager: {populationTier}, вместимость: {housingCapacity}");
+            _resourceManager.Population.AddHousingCapacity(populationTier, housingCapacity);
+            Debug.Log($"[Residence] {gameObject.name} зарегистрирован в Population: {populationTier}, вместимость: {housingCapacity}");
         }
 
         // FIX #11: Регистрируемся в BuildingRegistry для TaxManager
@@ -232,10 +231,10 @@ public class Residence : MonoBehaviour
     private void OnDestroy()
     {
         // Снимаем регистрацию жилья при уничтожении
-        if (_populationManager != null && !_identity.isBlueprint)
+        if (_resourceManager != null && _resourceManager.Population != null && !_identity.isBlueprint)
         {
-            _populationManager.RemoveHousingCapacity(populationTier, housingCapacity);
-            Debug.Log($"[Residence] {gameObject.name} снят с регистрации из PopulationManager");
+            _resourceManager.Population.RemoveHousingCapacity(populationTier, housingCapacity);
+            Debug.Log($"[Residence] {gameObject.name} снят с регистрации из Population");
         }
 
         // FIX #11: Разрегистрируемся из BuildingRegistry
