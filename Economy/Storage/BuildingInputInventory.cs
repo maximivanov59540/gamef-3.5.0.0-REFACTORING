@@ -15,7 +15,7 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     [Header("Логистика Запросов")]
     [Tooltip("Приоритет доставки (1-5). Тележки выберут того, у кого '5'")]
     [Range(1, 5)] public int priority = 3;
-    
+
     [Tooltip("Создать 'Запрос', когда склад опустеет до этого % (0.0 - 1.0)")]
     [Range(0f, 1f)] public float requestThresholdPercent = 0.25f; // 25%
 
@@ -23,7 +23,10 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     [Range(0f, 1f)] public float fulfillThresholdPercent = 0.8f; // 80%
 
     private Dictionary<ResourceType, ResourceRequest> _activeRequests = new Dictionary<ResourceType, ResourceRequest>();
-    
+
+    // ISSUE #8 FIX: Кэшированный словарь для O(1) lookup вместо O(n) FirstOrDefault
+    private Dictionary<ResourceType, StorageData> _resourceLookup = new Dictionary<ResourceType, StorageData>();
+
     private BuildingIdentity _identity;
     private LogisticsManager _logistics;
     public bool IsRequesting { get; private set; } = false;
@@ -56,10 +59,28 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     private void Start()
     {
         _logistics = LogisticsManager.Instance;
-        
+
         if (_logistics == null)
         {
             Debug.LogError($"[InputInv] {gameObject.name} не нашел LogisticsManager.Instance!");
+        }
+
+        // ISSUE #8 FIX: Инициализируем словарь для быстрого доступа
+        RebuildResourceLookup();
+    }
+
+    /// <summary>
+    /// ISSUE #8 FIX: Строит словарь для O(1) доступа к ресурсам
+    /// </summary>
+    private void RebuildResourceLookup()
+    {
+        _resourceLookup.Clear();
+        foreach (var slot in requiredResources)
+        {
+            if (slot != null)
+            {
+                _resourceLookup[slot.resourceType] = slot;
+            }
         }
     }
 
@@ -179,10 +200,11 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     
     /// <summary>
     /// Хелпер: находит слот по типу ресурса
+    /// ISSUE #8 FIX: Используем Dictionary для O(1) вместо O(n) FirstOrDefault
     /// </summary>
     private StorageData GetSlotForResource(ResourceType type)
     {
-        return requiredResources.FirstOrDefault(s => s.resourceType == type);
+        return _resourceLookup.TryGetValue(type, out var slot) ? slot : null;
     }
 
     private void UpdateIsRequesting()
@@ -204,8 +226,8 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
 
     public bool AcceptsResource(ResourceType type)
     {
-        // Проверяем, есть ли слот для этого типа ресурса
-        return requiredResources.Exists(s => s.resourceType == type);
+        // ISSUE #8 FIX: Используем Dictionary для O(1) вместо O(n) Exists
+        return _resourceLookup.ContainsKey(type);
     }
 
     public float GetAvailableSpace(ResourceType type)
