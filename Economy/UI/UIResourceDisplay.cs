@@ -5,7 +5,7 @@ public class UIResourceDisplay : MonoBehaviour
 {
     // Твои старые ссылки
     public ResourceManager resourceManager;
-    public PopulationManager populationManager;
+    // УДАЛЕНО: PopulationManager больше не Singleton, теперь в ResourceManager.Population
 
     // +++ НАША НОВАЯ ССЫЛКА +++
     public MoneyManager moneyManager; // Ссылка на казну
@@ -25,8 +25,6 @@ public class UIResourceDisplay : MonoBehaviour
         // Находим менеджеры если не назначены
         if (resourceManager == null)
             resourceManager = ResourceManager.Instance;
-        if (populationManager == null)
-            populationManager = PopulationManager.Instance;
         if (moneyManager == null)
             moneyManager = MoneyManager.Instance;
 
@@ -40,9 +38,9 @@ public class UIResourceDisplay : MonoBehaviour
         if (moneyManager != null)
             moneyManager.OnMoneyChanged += OnMoneyChanged;
 
-        // 🔔 PERF FIX: Подписываемся на события PopulationManager
-        if (populationManager != null)
-            populationManager.OnAnyPopulationChanged += OnPopulationChanged;
+        // 🔔 PERF FIX: Подписываемся на события Population (теперь в ResourceManager)
+        if (resourceManager != null && resourceManager.Population != null)
+            resourceManager.Population.OnAnyPopulationChanged += OnPopulationChanged;
     }
 
     void OnDestroy()
@@ -54,9 +52,9 @@ public class UIResourceDisplay : MonoBehaviour
         if (moneyManager != null)
             moneyManager.OnMoneyChanged -= OnMoneyChanged;
 
-        // 🔔 PERF FIX: Отписываемся от событий PopulationManager
-        if (populationManager != null)
-            populationManager.OnAnyPopulationChanged -= OnPopulationChanged;
+        // 🔔 PERF FIX: Отписываемся от событий Population (теперь в ResourceManager)
+        if (resourceManager != null && resourceManager.Population != null)
+            resourceManager.Population.OnAnyPopulationChanged -= OnPopulationChanged;
     }
 
     // FIX #14: Обновляем только при изменении ресурсов
@@ -92,10 +90,10 @@ public class UIResourceDisplay : MonoBehaviour
     // 🔔 PERF FIX: Обновляем только при изменении населения
     private void OnPopulationChanged()
     {
-        if (populationManager != null && populationText != null)
+        if (resourceManager != null && resourceManager.Population != null && populationText != null)
         {
-            int current = populationManager.GetTotalCurrentPopulation();
-            int max = populationManager.GetTotalMaxPopulation();
+            int current = resourceManager.Population.GetTotalCurrentPopulation();
+            int max = resourceManager.Population.GetTotalMaxPopulation();
             populationText.text = string.Format("Население: {0} / {1}", current, max);
         }
     }

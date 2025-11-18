@@ -92,7 +92,7 @@ public class ResourceProducer : MonoBehaviour
     private System.Collections.IEnumerator InitializeWhenReady()
     {
         // Ждем пока все необходимые системы будут готовы
-        while (_gridSystem == null || RoadManager.Instance == null || WorkforceManager.Instance == null)
+        while (_gridSystem == null || RoadManager.Instance == null || ResourceManager.Instance == null || ResourceManager.Instance.Population == null)
         {
             if (_gridSystem == null)
             {
@@ -127,7 +127,7 @@ public class ResourceProducer : MonoBehaviour
             FindWarehouseAccess();
         }
 
-        WorkforceManager.Instance.RegisterProducer(this);
+        ResourceManager.Instance.Population.RegisterProducer(this);
 
         // ISSUE #10 FIX: Строим кэш inputCosts для быстрого доступа
         RebuildInputCostLookup();
@@ -164,7 +164,7 @@ public class ResourceProducer : MonoBehaviour
             _outputInv.OnFull -= PauseProduction;
             _outputInv.OnSpaceAvailable -= ResumeProduction;
         }
-        WorkforceManager.Instance?.UnregisterProducer(this);
+        ResourceManager.Instance?.Population?.UnregisterProducer(this);
 
         // FIX #13: Разрегистрируемся из BuildingRegistry
         if (BuildingRegistry.Instance != null)
@@ -235,9 +235,9 @@ void Update()
 
     // --- Шаг 2: Логика "Рабочей Силы" (с типизированными работниками) ---
     // 🔥 FIX: Кешируем Instance локально для защиты от race condition
-    var workforceManager = WorkforceManager.Instance;
-    _currentWorkforceCap = workforceManager != null
-        ? workforceManager.GetWorkforceRatio(requiredWorkerType)
+    var population = ResourceManager.Instance?.Population;
+    _currentWorkforceCap = population != null
+        ? population.GetWorkforceRatio(requiredWorkerType)
         : 1.0f;
 
 

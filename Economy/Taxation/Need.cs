@@ -119,13 +119,13 @@ public class Need
             return true;
 
         // Проверяем текущее население нужного класса
-        if (PopulationManager.Instance == null)
+        if (ResourceManager.Instance == null || ResourceManager.Instance.Population == null)
         {
-            Debug.LogWarning($"[Need] PopulationManager не найден! Потребность {resourceType} считается НЕ разблокированной.");
+            Debug.LogWarning($"[Need] Population не найден! Потребность {resourceType} считается НЕ разблокированной.");
             return false;
         }
 
-        int currentPop = PopulationManager.Instance.GetCurrentPopulation(unlockPopulationTier);
+        int currentPop = ResourceManager.Instance.Population.GetCurrentPopulation(unlockPopulationTier);
         bool unlocked = currentPop >= unlockAtPopulation;
 
         return unlocked;
