@@ -24,6 +24,9 @@ public class BuildingRegistry : MonoBehaviour
     private readonly List<BuildingInputInventory> _allInputs = new List<BuildingInputInventory>(256);
     private readonly List<Warehouse> _allWarehouses = new List<Warehouse>(16);
     private readonly List<BuildingResourceRouting> _allRoutings = new List<BuildingResourceRouting>(256); // 🚀 O(n²) FIX
+    private readonly List<Residence> _allResidences = new List<Residence>(128); // FIX #11: Для TaxManager
+    private readonly List<BuildingIdentity> _allBuildings = new List<BuildingIdentity>(512); // FIX #12: Для EconomyManager
+    private readonly List<ResourceProducer> _allProducers = new List<ResourceProducer>(256); // FIX #13: Для Warehouse
 
     // === UNITY LIFECYCLE ===
 
@@ -97,6 +100,45 @@ public class BuildingRegistry : MonoBehaviour
         _allRoutings.Remove(routing);
     }
 
+    // FIX #11: Регистрация Residence для TaxManager
+    public void RegisterResidence(Residence residence)
+    {
+        if (residence == null || _allResidences.Contains(residence)) return;
+        _allResidences.Add(residence);
+    }
+
+    public void UnregisterResidence(Residence residence)
+    {
+        if (residence == null) return;
+        _allResidences.Remove(residence);
+    }
+
+    // FIX #12: Регистрация BuildingIdentity для EconomyManager
+    public void RegisterBuilding(BuildingIdentity building)
+    {
+        if (building == null || _allBuildings.Contains(building)) return;
+        _allBuildings.Add(building);
+    }
+
+    public void UnregisterBuilding(BuildingIdentity building)
+    {
+        if (building == null) return;
+        _allBuildings.Remove(building);
+    }
+
+    // FIX #13: Регистрация ResourceProducer для Warehouse
+    public void RegisterProducer(ResourceProducer producer)
+    {
+        if (producer == null || _allProducers.Contains(producer)) return;
+        _allProducers.Add(producer);
+    }
+
+    public void UnregisterProducer(ResourceProducer producer)
+    {
+        if (producer == null) return;
+        _allProducers.Remove(producer);
+    }
+
     // === ПОЛУЧЕНИЕ СПИСКОВ (O(1) вместо O(N) с FindObjectsByType) ===
 
     /// <summary>
@@ -136,12 +178,45 @@ public class BuildingRegistry : MonoBehaviour
         return _allRoutings;
     }
 
+    /// <summary>
+    /// Получить все Residence (жилые дома).
+    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// FIX #11: Используется в TaxManager вместо FindObjectsByType каждую минуту
+    /// </summary>
+    public IReadOnlyList<Residence> GetAllResidences()
+    {
+        return _allResidences;
+    }
+
+    /// <summary>
+    /// Получить все BuildingIdentity (все здания).
+    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// FIX #12: Используется в EconomyManager для подсчёта upkeep каждую минуту
+    /// </summary>
+    public IReadOnlyList<BuildingIdentity> GetAllBuildings()
+    {
+        return _allBuildings;
+    }
+
+    /// <summary>
+    /// Получить все ResourceProducer (производители).
+    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// FIX #13: Используется в Warehouse.RefreshAllProducers() вместо FindObjectsByType
+    /// </summary>
+    public IReadOnlyList<ResourceProducer> GetAllProducers()
+    {
+        return _allProducers;
+    }
+
     // === ОТЛАДКА ===
 
     public int GetOutputCount() => _allOutputs.Count;
     public int GetInputCount() => _allInputs.Count;
     public int GetWarehouseCount() => _allWarehouses.Count;
     public int GetRoutingCount() => _allRoutings.Count;
+    public int GetResidenceCount() => _allResidences.Count; // FIX #11
+    public int GetBuildingCount() => _allBuildings.Count; // FIX #12
+    public int GetProducerCount() => _allProducers.Count; // FIX #13
 
     /// <summary>
     /// Принудительное пересканирование сцены (только для отладки!).
@@ -154,18 +229,27 @@ public class BuildingRegistry : MonoBehaviour
         _allInputs.Clear();
         _allWarehouses.Clear();
         _allRoutings.Clear();
+        _allResidences.Clear(); // FIX #11
+        _allBuildings.Clear(); // FIX #12
+        _allProducers.Clear(); // FIX #13
 
         var outputs = FindObjectsByType<BuildingOutputInventory>(FindObjectsSortMode.None);
         var inputs = FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
         var warehouses = FindObjectsByType<Warehouse>(FindObjectsSortMode.None);
         var routings = FindObjectsByType<BuildingResourceRouting>(FindObjectsSortMode.None);
+        var residences = FindObjectsByType<Residence>(FindObjectsSortMode.None); // FIX #11
+        var buildings = FindObjectsByType<BuildingIdentity>(FindObjectsSortMode.None); // FIX #12
+        var producers = FindObjectsByType<ResourceProducer>(FindObjectsSortMode.None); // FIX #13
 
         _allOutputs.AddRange(outputs);
         _allInputs.AddRange(inputs);
         _allWarehouses.AddRange(warehouses);
         _allRoutings.AddRange(routings);
+        _allResidences.AddRange(residences); // FIX #11
+        _allBuildings.AddRange(buildings); // FIX #12
+        _allProducers.AddRange(producers); // FIX #13
 
-        Debug.LogWarning($"[BuildingRegistry] Force rescan: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings");
+        Debug.LogWarning($"[BuildingRegistry] Force rescan: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings, {_allResidences.Count} residences, {_allBuildings.Count} buildings, {_allProducers.Count} producers");
     }
 
     // === СТАТИСТИКА (для UI/отладки) ===
@@ -175,7 +259,7 @@ public class BuildingRegistry : MonoBehaviour
         // Периодически логируем статистику (каждые 60 секунд)
         if (Time.frameCount % 3600 == 0)
         {
-            Debug.Log($"[BuildingRegistry] Статистика: {_allOutputs.Count} производителей, {_allInputs.Count} потребителей, {_allWarehouses.Count} складов, {_allRoutings.Count} маршрутов");
+            Debug.Log($"[BuildingRegistry] Статистика: {_allBuildings.Count} зданий, {_allProducers.Count} производителей, {_allOutputs.Count} выходов, {_allInputs.Count} входов, {_allWarehouses.Count} складов, {_allRoutings.Count} маршрутов, {_allResidences.Count} резиденций");
         }
     }
 }

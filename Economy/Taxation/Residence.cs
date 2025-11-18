@@ -220,6 +220,12 @@ public class Residence : MonoBehaviour
             Debug.Log($"[Residence] {gameObject.name} зарегистрирован в PopulationManager: {populationTier}, вместимость: {housingCapacity}");
         }
 
+        // FIX #11: Регистрируемся в BuildingRegistry для TaxManager
+        if (BuildingRegistry.Instance != null && !_identity.isBlueprint)
+        {
+            BuildingRegistry.Instance.RegisterResidence(this);
+        }
+
         _consumeNeedsCoroutine = StartCoroutine(ConsumeNeedsCoroutine());
     }
 
@@ -230,6 +236,12 @@ public class Residence : MonoBehaviour
         {
             _populationManager.RemoveHousingCapacity(populationTier, housingCapacity);
             Debug.Log($"[Residence] {gameObject.name} снят с регистрации из PopulationManager");
+        }
+
+        // FIX #11: Разрегистрируемся из BuildingRegistry
+        if (BuildingRegistry.Instance != null && _identity != null && !_identity.isBlueprint)
+        {
+            BuildingRegistry.Instance.UnregisterResidence(this);
         }
 
         // 🔥 FIX: Memory leak - останавливаем корутину при уничтожении

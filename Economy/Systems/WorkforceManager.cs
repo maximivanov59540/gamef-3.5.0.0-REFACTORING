@@ -10,6 +10,9 @@ public class WorkforceManager : MonoBehaviour
 {
     public static WorkforceManager Instance { get; private set; }
 
+    // FIX #17: Кешируем Enum.GetValues для избежания аллокаций
+    private static readonly PopulationTier[] AllTiers = (PopulationTier[])System.Enum.GetValues(typeof(PopulationTier));
+
     [Tooltip("Включить/Выключить всю систему 'Рынка Труда'")]
     public bool workforceSystemEnabled = true;
 
@@ -181,7 +184,8 @@ public class WorkforceManager : MonoBehaviour
         float totalRatio = 0f;
         int count = 0;
 
-        foreach (PopulationTier tier in System.Enum.GetValues(typeof(PopulationTier)))
+        // FIX #17: Используем кешированный массив вместо Enum.GetValues
+        foreach (PopulationTier tier in AllTiers)
         {
             totalRatio += GetWorkforceRatio(tier);
             count++;

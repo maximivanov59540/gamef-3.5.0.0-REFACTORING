@@ -23,6 +23,24 @@ public class BuildingIdentity : MonoBehaviour
         {
             currentTier = buildingData.currentTier;
         }
+
+        // FIX #12: Регистрируемся в BuildingRegistry для EconomyManager
+        if (BuildingRegistry.Instance != null)
+        {
+            BuildingRegistry.Instance.RegisterBuilding(this);
+        }
+    }
+
+    /// <summary>
+    /// Разрегистрация при уничтожении
+    /// </summary>
+    void OnDestroy()
+    {
+        // FIX #12: Разрегистрируемся из BuildingRegistry
+        if (BuildingRegistry.Instance != null)
+        {
+            BuildingRegistry.Instance.UnregisterBuilding(this);
+        }
     }
 
     /// <summary>

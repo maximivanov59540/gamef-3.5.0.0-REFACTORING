@@ -55,18 +55,25 @@ public class EconomyManager : MonoBehaviour
 
             float totalUpkeep = 0;
 
-            // 1. Ищем ВСЕ построенные здания в игре
-            // (В будущем это можно оптимизировать, если BuildingManager
-            // будет "регистрировать" здания при постройке)
-            var allBuildings = FindObjectsByType<BuildingIdentity>(FindObjectsSortMode.None);
-            
-            foreach (var building in allBuildings)
+            // FIX #12: Используем BuildingRegistry вместо FindObjectsByType каждую минуту
+            if (BuildingRegistry.Instance != null)
             {
-                // "Проекты" (чертежи) не тратят деньги на содержание
-                if (!building.isBlueprint && building.buildingData != null)
+                var allBuildings = BuildingRegistry.Instance.GetAllBuildings();
+
+                foreach (var building in allBuildings)
                 {
-                    totalUpkeep += building.buildingData.upkeepCostPerMinute;
+                    if (building == null) continue; // Проверяем на null (объект мог быть удален)
+
+                    // "Проекты" (чертежи) не тратят деньги на содержание
+                    if (!building.isBlueprint && building.buildingData != null)
+                    {
+                        totalUpkeep += building.buildingData.upkeepCostPerMinute;
+                    }
                 }
+            }
+            else
+            {
+                Debug.LogWarning("[EconomyManager] BuildingRegistry.Instance == null! Не могу получить список зданий.");
             }
 
             if (totalUpkeep > 0)
