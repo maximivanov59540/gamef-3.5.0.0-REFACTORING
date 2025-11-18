@@ -12,6 +12,13 @@ public class EconomyManager : MonoBehaviour
     [Tooltip("Мы в долгах? (Не можем строить)")]
     public bool IsInDebt { get; private set; } = false;
 
+    // === СОБЫТИЯ ДЛЯ РАЗРЫВА ЦИКЛИЧЕСКИХ ЗАВИСИМОСТЕЙ ===
+    /// <summary>
+    /// Событие, которое срабатывает при изменении статуса долга.
+    /// Использует event-driven подход вместо прямого polling IsInDebt.
+    /// </summary>
+    public event System.Action<bool> OnDebtStatusChanged;
+
     private NotificationManager _notificationManager;
     private Coroutine _minuteTickCoroutine; // 🔥 FIX: Храним ссылку на корутину
 
@@ -80,10 +87,18 @@ public class EconomyManager : MonoBehaviour
             {
                 // 2. Пытаемся списать деньги из "Казны"
                 bool success = MoneyManager.Instance.SpendMoney(totalUpkeep);
-                
-                // 3. Обновляем статус "в долгах"
-                IsInDebt = !success; 
-                
+
+                // 3. Обновляем статус "в долгах" и отправляем событие
+                bool newDebtStatus = !success;
+
+                // FIX: Event-driven вместо polling - отправляем событие только при изменении статуса
+                if (IsInDebt != newDebtStatus)
+                {
+                    IsInDebt = newDebtStatus;
+                    OnDebtStatusChanged?.Invoke(IsInDebt);
+                    Debug.Log($"[EconomyManager] Статус долга изменен: IsInDebt = {IsInDebt}");
+                }
+
                 if (!success)
                 {
                     Debug.LogWarning($"[EconomyManager] Не удалось оплатить содержание! Upkeep: {totalUpkeep}. Мы в долгах!");
@@ -91,13 +106,18 @@ public class EconomyManager : MonoBehaviour
                 }
                 else
                 {
-                    IsInDebt = false; // (Явно снимаем "долг", если оплата прошла)
                     Debug.Log($"[EconomyManager] Содержание (Upkeep) оплачено: {totalUpkeep}");
                 }
             }
             else
             {
-                IsInDebt = false; // (Если платить не за что, мы не в долгах)
+                // Если платить не за что, мы не в долгах
+                if (IsInDebt != false)
+                {
+                    IsInDebt = false;
+                    OnDebtStatusChanged?.Invoke(IsInDebt);
+                    Debug.Log($"[EconomyManager] Статус долга изменен: IsInDebt = false (нет расходов)");
+                }
             }
         }
     }
