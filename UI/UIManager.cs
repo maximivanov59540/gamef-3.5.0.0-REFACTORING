@@ -35,12 +35,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject balancePanel;
 
     // --- Приватные ссылки ---
-    private ResourceProducer _selectedProducer; 
+    private ResourceProducer _selectedProducer;
     private ModularBuilding _selectedFarm;
     private System.Action _onConfirmAction;
     private System.Action _onCancelAction;
     private ZonedArea _selectedZone;
     private NotificationManager _notificationManager;
+    private bool _sliderListenerActive = false; // FIX #6: Отслеживание подписки на слайдер
     
 
 
@@ -55,24 +56,36 @@ public class UIManager : MonoBehaviour
             moduleButtonContainer.SetActive(false);
         }
         // --- КОНЕЦ ИЗМЕНЕНИЯ ---
-        if (productionPanel) 
+        if (productionPanel)
             productionPanel.SetActive(false);
 
-            if (warehousePanel) 
+            if (warehousePanel)
             warehousePanel.SetActive(false);
 
         // Находим NotificationManager (для Шага 2.0, но он нужен и здесь)
         _notificationManager = FindFirstObjectByType<NotificationManager>();
+        if (_notificationManager == null)
+        {
+            Debug.LogWarning("UIManager: NotificationManager не найден в сцене!");
+        }
+    }
 
+    // --- FIX #5: Используем OnEnable/OnDisable вместо Start/OnDestroy для событий ---
+    private void OnEnable()
+    {
         if (SelectionManager.Instance != null)
             SelectionManager.Instance.SelectionChanged += OnSelectionChanged;
-        else
-            Debug.LogError("UIManager не нашел SelectionManager!");
-        _notificationManager = FindFirstObjectByType<NotificationManager>();
     }
-    
+
+    private void OnDisable()
+    {
+        if (SelectionManager.Instance != null)
+            SelectionManager.Instance.SelectionChanged -= OnSelectionChanged;
+    }
+
     private void OnDestroy()
     {
+        // Дополнительная страховка при удалении объекта
         if (SelectionManager.Instance != null)
             SelectionManager.Instance.SelectionChanged -= OnSelectionChanged;
     }
@@ -135,18 +148,23 @@ public class UIManager : MonoBehaviour
         infoPanel.SetActive(false);
         buildingNameText.text = "";
 
-        ClearModuleButtons(); 
-        
-        if (productionPanel) 
-            productionPanel.SetActive(false);
-        if (productivitySlider) 
-            productivitySlider.onValueChanged.RemoveAllListeners();
+        ClearModuleButtons();
 
-        if (warehousePanel) 
+        if (productionPanel)
+            productionPanel.SetActive(false);
+
+        // FIX #6: Безопасное удаление только своего слушателя
+        if (productivitySlider && _sliderListenerActive)
+        {
+            productivitySlider.onValueChanged.RemoveListener(OnEfficiencySliderChanged);
+            _sliderListenerActive = false;
+        }
+
+        if (warehousePanel)
             warehousePanel.SetActive(false);
 
         _selectedFarm = null;
-        
+
         if (_selectedZone != null)
         {
             _selectedZone.HideSlotHighlights();
@@ -258,17 +276,21 @@ public class UIManager : MonoBehaviour
     private void ShowProductionControls(ResourceProducer producer)
     {
         if (productionPanel == null || productivitySlider == null) return;
-        
+
         productionPanel.SetActive(true);
-        
+
         // "Считываем" "текущий" "слайдер" "из" "мозга"
         float currentEfficiency = producer.GetEfficiency();
         productivitySlider.value = currentEfficiency;
 
         UpdateEfficiencyText(producer.GetFinalEfficiency()); // <-- ИСПОЛЬЗУЕМ ГЕТТЕР
 
-        // "Подписываемся" "на" "движение" "слайдера"
-        productivitySlider.onValueChanged.AddListener(OnEfficiencySliderChanged);
+        // FIX #6: Безопасное добавление слушателя
+        if (!_sliderListenerActive)
+        {
+            productivitySlider.onValueChanged.AddListener(OnEfficiencySliderChanged);
+            _sliderListenerActive = true;
+        }
     }
     private void OnEfficiencySliderChanged(float value)
     {
@@ -301,15 +323,26 @@ public class UIManager : MonoBehaviour
             Debug.LogError("Кнопка 'Build Module' нажата, но _selectedFarm == null!");
             return;
         }
-        
+
         if (!_selectedFarm.CanAddModule())
         {
-            _notificationManager.ShowNotification("Достигнут лимит модулей!");
+            // FIX #1: Проверка на null перед использованием
+            if (_notificationManager != null)
+                _notificationManager.ShowNotification("Достигнут лимит модулей!");
+            else
+                Debug.LogWarning("UIManager: Не могу показать уведомление, NotificationManager == null");
             return;
         }
 
-        // "Отдаем" "приказ" "Контроллеру" "Ввода"
-        PlayerInputController.Instance.EnterPlacingModuleMode(_selectedFarm, moduleToBuild);
+        // FIX #1: Проверка на null перед использованием
+        if (PlayerInputController.Instance != null)
+        {
+            PlayerInputController.Instance.EnterPlacingModuleMode(_selectedFarm, moduleToBuild);
+        }
+        else
+        {
+            Debug.LogError("UIManager: PlayerInputController.Instance == null!");
+        }
     }
     
 }

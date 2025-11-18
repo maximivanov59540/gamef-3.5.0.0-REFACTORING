@@ -132,15 +132,22 @@ public class CartAgent : MonoBehaviour
         _homeOutput = _homeBase.GetComponent<BuildingOutputInventory>();
         _homeInput = _homeBase.GetComponent<BuildingInputInventory>();
         _routing = _homeBase.GetComponent<BuildingResourceRouting>();
-        
-        // Проверяем обязательные компоненты
+
+        // FIX #2: Проверяем ВСЕ обязательные компоненты
         if (_homeOutput == null)
         {
             Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingOutputInventory!", this);
             enabled = false;
             return;
         }
-        
+
+        if (_homeInput == null)
+        {
+            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingInputInventory!", this);
+            enabled = false;
+            return;
+        }
+
         if (_routing == null)
         {
             Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingResourceRouting!", this);
@@ -973,7 +980,11 @@ public class CartAgent : MonoBehaviour
                 {
                     // С грузом - разгружаем
                     Debug.Log($"[CartAgent] {name}: Приехал домой с грузом, разгружаю");
-                    StartCoroutine(UnloadInputAtHomeCoroutine());
+
+                    // FIX #4: Сохраняем корутину в _activeCoroutine для правильной очистки
+                    if (_activeCoroutine != null)
+                        StopCoroutine(_activeCoroutine);
+                    _activeCoroutine = StartCoroutine(UnloadInputAtHomeCoroutine());
                 }
                 else
                 {

@@ -46,6 +46,29 @@ public class BuildingManager : MonoBehaviour
         if (_notificationManager == null) Debug.LogWarning("BuildingManager: Не найден NotificationManager в сцене.", this);
 
     }
+
+    // FIX #3: Вспомогательные методы для безопасного доступа к Singleton'ам
+    private bool SafeSpendMoney(float amount)
+    {
+        if (MoneyManager.Instance == null)
+        {
+            Debug.LogError("BuildingManager: MoneyManager.Instance == null!", this);
+            return false;
+        }
+        return MoneyManager.Instance.SpendMoney(amount);
+    }
+
+    private void SafeAddMoney(float amount)
+    {
+        if (MoneyManager.Instance != null)
+        {
+            MoneyManager.Instance.AddMoney(amount);
+        }
+        else
+        {
+            Debug.LogError("BuildingManager: MoneyManager.Instance == null при возврате денег!", this);
+        }
+    }
     /// <summary>Хелпер для State_Building, чтобы тот мог рисовать превью.</summary>
     public AuraEmitter GetGhostAuraEmitter()
     {
@@ -341,14 +364,16 @@ public class BuildingManager : MonoBehaviour
     private bool ExecuteBlueprintUpgrade(BuildingIdentity identity)
     {
         // --- ПРОВЕРКИ ---
-        if (EconomyManager.Instance.IsInDebt)
+        // FIX #3: Безопасная проверка EconomyManager
+        if (EconomyManager.Instance != null && EconomyManager.Instance.IsInDebt)
         {
             _notificationManager?.ShowNotification("Мы в долгах! Улучшение невозможно.");
             return false;
         }
 
         BuildingData data = identity.buildingData;
-        if (!MoneyManager.Instance.SpendMoney(data.moneyCost))
+        // FIX #3: Используем безопасный метод
+        if (!SafeSpendMoney(data.moneyCost))
         {
             _notificationManager?.ShowNotification("Недостаточно золота для улучшения!");
             return false;
@@ -358,7 +383,8 @@ public class BuildingManager : MonoBehaviour
         {
             _notificationManager?.ShowNotification("Недостаточно ресурсов!");
             // ВАЖНО: Возвращаем золото
-            MoneyManager.Instance.AddMoney(data.moneyCost);
+            // FIX #3: Используем безопасный метод
+            SafeAddMoney(data.moneyCost);
             return false;
         }
 
@@ -423,14 +449,16 @@ public class BuildingManager : MonoBehaviour
         }
 
         // 2. Проверка долгов
-        if (EconomyManager.Instance.IsInDebt)
+        // FIX #3: Безопасная проверка EconomyManager
+        if (EconomyManager.Instance != null && EconomyManager.Instance.IsInDebt)
         {
             _notificationManager?.ShowNotification("Мы в долгах! Улучшение невозможно.");
             return false;
         }
 
         // 3. Проверка золота (используем upgradeMoneyCost)
-        if (!MoneyManager.Instance.SpendMoney(currentData.upgradeMoneyCost))
+        // FIX #3: Используем безопасный метод
+        if (!SafeSpendMoney(currentData.upgradeMoneyCost))
         {
             _notificationManager?.ShowNotification($"Недостаточно золота для апгрейда! Нужно: {currentData.upgradeMoneyCost}");
             return false;
@@ -443,7 +471,8 @@ public class BuildingManager : MonoBehaviour
             {
                 _notificationManager?.ShowNotification("Недостаточно ресурсов для апгрейда!");
                 // Возвращаем золото
-                MoneyManager.Instance.AddMoney(currentData.upgradeMoneyCost);
+                // FIX #3: Используем безопасный метод
+                SafeAddMoney(currentData.upgradeMoneyCost);
                 return false;
             }
         }
@@ -490,7 +519,8 @@ public class BuildingManager : MonoBehaviour
                     _resourceManager.AddToStorage(cost.resourceType, cost.amount);
                 }
             }
-            MoneyManager.Instance.AddMoney(currentData.upgradeMoneyCost);
+            // FIX #3: Используем безопасный метод
+            SafeAddMoney(currentData.upgradeMoneyCost);
             return false;
         }
     }
@@ -695,7 +725,8 @@ public class BuildingManager : MonoBehaviour
             // --- СЛУЧАЙ 2: Мы "ставим" НОВОЕ здание ---
 
             // --- ПРОВЕРКИ ЗОЛОТА И РЕСУРСОВ (3.0) ---
-            if (!MoneyManager.Instance.SpendMoney(_selectedBuildingData.moneyCost))
+            // FIX #3: Используем безопасный метод
+            if (!SafeSpendMoney(_selectedBuildingData.moneyCost))
             {
                 _notificationManager?.ShowNotification("Недостаточно золота!");
                 return false;
@@ -704,7 +735,8 @@ public class BuildingManager : MonoBehaviour
             {
                 _notificationManager?.ShowNotification("Недостаточно ресурсов!");
                 // ВАЖНО: Возвращаем золото, т.к. стройка не удалась
-                MoneyManager.Instance.AddMoney(_selectedBuildingData.moneyCost);
+                // FIX #3: Используем безопасный метод
+                SafeAddMoney(_selectedBuildingData.moneyCost);
                 return false;
             }
             // --- КОНЕЦ ПРОВЕРОК ---
