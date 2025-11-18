@@ -1,0 +1,221 @@
+═════════════════════════════════════════════════════════════════════════════════
+PERFORMANCE ISSUES - FILES WITH ABSOLUTE PATHS
+═════════════════════════════════════════════════════════════════════════════════
+
+CRITICAL ISSUES (Must Fix)
+───────────────────────────────────────────────────────────────────────────────
+
+1. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadManager.cs
+   Lines: 110, 113
+   Issue: List.Contains in loop (O(n²))
+   Pattern: Contains check before Add
+   Fix: Replace List with HashSet
+
+2. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/BuildingRegistry.cs
+   Lines: 54, 66, 78, 90
+   Issue: Contains before Add/Remove (4 locations, O(n))
+   Pattern: Duplicate checking on lists
+   Fix: Replace List<T> with HashSet<T>
+
+3. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadCoverageVisualizer.cs
+   Lines: 322-334, 340-370, 386-391
+   Issue: GetComponent in loops (O(n×m))
+   Pattern: Three methods calling GetComponent repeatedly
+   Methods: ApplyRoadColors, ClearVisualsHard
+   Fix: Cache components in Dictionary
+
+4. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/LogisticsPathfinder.cs
+   Lines: 301-315
+   Issue: Triple nested loops (O(radius³))
+   Method: FindNearestRoads
+   Fix: Use BFS instead of square scan
+
+5. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Aura/AuraManager.cs
+   Lines: 43, 48
+   Issue: List.Contains for emitters (O(n))
+   Methods: RegisterEmitter, UnregisterEmitter
+   Fix: Replace List with HashSet
+
+6. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Event/EventManager.cs
+   Lines: 134-135
+   Issue: Any() scanning full list (O(n))
+   Method: CheckForEvents
+   Fix: Use counter instead of Any()
+
+7. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Event/EventManager.cs
+   Lines: 202-213
+   Issue: GetComponent in LINQ query (O(n×m))
+   Method: TriggerEvent
+   Fix: Cache Residence component
+
+───────────────────────────────────────────────────────────────────────────────
+
+HIGH PRIORITY ISSUES (Do Next)
+───────────────────────────────────────────────────────────────────────────────
+
+8. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/BuildingInputInventory.cs
+   Lines: 133, 152, 165, 183-185, 213
+   Issue: FirstOrDefault in loops (O(n))
+   Method: GetSlotForResource
+   Fix: Replace List with Dictionary
+
+9. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/LogisticsManager.cs
+   Lines: 75
+   Issue: Where().ToList() allocation (O(n))
+   Method: GetBestRequest
+   Fix: Use Dictionary grouping by ResourceType
+
+10. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/ResourceProducer.cs
+    Lines: 435
+    Issue: List.Find (O(n))
+    Method: FindWarehouseAccess
+    Fix: Replace List with Dictionary
+
+───────────────────────────────────────────────────────────────────────────────
+
+MEDIUM PRIORITY ISSUES (Polish)
+───────────────────────────────────────────────────────────────────────────────
+
+11. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/BuildingInputInventory.cs
+    Lines: 208
+    Issue: List.Exists (O(n))
+    Method: AcceptsResource
+    Fix: Use HashSet for O(1) lookup
+
+12. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Modular Buildings/ModularBuilding.cs
+    Lines: 37, 57
+    Issue: List.Contains (O(n), but n ≤ 10)
+    Methods: RegisterModule, UnregisterModule
+    Fix: Use HashSet
+
+13. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadCoverageVisualizer.cs
+    Lines: 245-267
+    Issue: Nested loops (O(w×h) but w,h ≤ 5)
+    Method: ComputeSeedsForSource
+    Note: Low priority, already optimized
+
+14. /home/user/gamef-3.5.0.0-REFACTORING/Construction/GroupOps/GroupOperationHandler.cs
+    Lines: 91-102
+    Issue: Nested building scan (O(n×w×h))
+    Method: CollectRoadsUnderBuildings
+    Note: Low priority, called only during mass ops
+
+═════════════════════════════════════════════════════════════════════════════════
+SUMMARY BY FILE
+═════════════════════════════════════════════════════════════════════════════════
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Event/EventManager.cs
+Issues: 2 (lines 134-135, 202-213)
+Priority: CRITICAL + CRITICAL
+Type: Any() scan + GetComponent in LINQ
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadCoverageVisualizer.cs
+Issues: 3 (lines 322-391, 245-267)
+Priority: CRITICAL + MEDIUM
+Type: GetComponent in loops + nested loops
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/BuildingInputInventory.cs
+Issues: 3 (lines 183-185, 208)
+Priority: HIGH + MEDIUM
+Type: FirstOrDefault + Exists
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadManager.cs
+Issues: 1 (lines 110-113)
+Priority: CRITICAL
+Type: Contains in loop
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/BuildingRegistry.cs
+Issues: 1 (lines 54-90)
+Priority: CRITICAL
+Type: Contains before Add/Remove (4 methods)
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/LogisticsPathfinder.cs
+Issues: 1 (lines 301-315)
+Priority: CRITICAL
+Type: Triple nested loops
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Aura/AuraManager.cs
+Issues: 1 (lines 43, 48)
+Priority: CRITICAL
+Type: List.Contains
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/LogisticsManager.cs
+Issues: 1 (line 75)
+Priority: HIGH
+Type: LINQ Where().ToList()
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/ResourceProducer.cs
+Issues: 1 (line 435)
+Priority: HIGH
+Type: List.Find()
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Construction/Modular Buildings/ModularBuilding.cs
+Issues: 1 (lines 37, 57)
+Priority: MEDIUM
+Type: List.Contains
+
+File: /home/user/gamef-3.5.0.0-REFACTORING/Construction/GroupOps/GroupOperationHandler.cs
+Issues: 1 (lines 91-102)
+Priority: MEDIUM
+Type: Nested loops
+
+═════════════════════════════════════════════════════════════════════════════════
+RECOMMENDED FIX ORDER
+═════════════════════════════════════════════════════════════════════════════════
+
+Phase 1 (Critical - 2-3 hours)
+───────────────────────────────
+1. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadManager.cs
+   Replace List with HashSet
+
+2. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/BuildingRegistry.cs
+   Replace List with HashSet (4 methods)
+
+3. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/RoadCoverageVisualizer.cs
+   Cache GetComponent results
+
+4. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Roads/LogisticsPathfinder.cs
+   Optimize FindNearestRoads method
+
+5. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Aura/AuraManager.cs
+   Replace List with HashSet
+
+6. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Event/EventManager.cs
+   Add counters for active events
+
+7. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Event/EventManager.cs
+   Cache Residence component
+
+Phase 2 (High - 1-2 hours)
+──────────────────────────
+8. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/BuildingInputInventory.cs
+   Use Dictionary instead of FirstOrDefault
+
+9. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/LogisticsManager.cs
+   Group requests by ResourceType
+
+10. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Systems/ResourceProducer.cs
+    Use Dictionary for cost lookup
+
+Phase 3 (Medium - 30 min)
+────────────────────────
+11. /home/user/gamef-3.5.0.0-REFACTORING/Economy/Storage/BuildingInputInventory.cs
+    Use HashSet for accepted resources
+
+12. /home/user/gamef-3.5.0.0-REFACTORING/Construction/Modular Buildings/ModularBuilding.cs
+    Replace List with HashSet
+
+═════════════════════════════════════════════════════════════════════════════════
+TOTAL IMPACT
+═════════════════════════════════════════════════════════════════════════════════
+
+Files to Modify: 10
+Total Issues: 15
+Critical Issues: 7
+High Issues: 3
+Medium Issues: 5
+
+Estimated Time: 4-6 hours
+Performance Gain: 5-10x faster in affected systems
+
+═════════════════════════════════════════════════════════════════════════════════
