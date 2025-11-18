@@ -13,6 +13,8 @@ public class BuildingManager : MonoBehaviour
     private NotificationManager _notificationManager;
 
     // --- Внутреннее состояние ---
+    // FIX: Event-driven вместо polling EconomyManager.Instance.IsInDebt
+    private bool _isInDebt = false;
     private BuildingData _selectedBuildingData;
     private GameObject _ghostBuilding;
     private GhostBuildingCollider _ghostCollider;
@@ -44,7 +46,33 @@ public class BuildingManager : MonoBehaviour
         if (_populationManager == null) Debug.LogError("BuildingManager: Не найден PopulationManager в сцене!", this);
         if (_gridSystem == null) Debug.LogError("BuildingManager: Не найден GridSystem в сцене!", this);
         if (_notificationManager == null) Debug.LogWarning("BuildingManager: Не найден NotificationManager в сцене.", this);
+    }
 
+    void Start()
+    {
+        // FIX: Подписываемся на событие изменения статуса долга (event-driven вместо polling)
+        if (EconomyManager.Instance != null)
+        {
+            EconomyManager.Instance.OnDebtStatusChanged += HandleDebtStatusChanged;
+            // Получаем текущий статус долга при старте
+            _isInDebt = EconomyManager.Instance.IsInDebt;
+        }
+    }
+
+    void OnDestroy()
+    {
+        // FIX: Отписываемся от события для избежания memory leaks
+        if (EconomyManager.Instance != null)
+        {
+            EconomyManager.Instance.OnDebtStatusChanged -= HandleDebtStatusChanged;
+        }
+    }
+
+    // FIX: Обработчик события изменения статуса долга
+    private void HandleDebtStatusChanged(bool isInDebt)
+    {
+        _isInDebt = isInDebt;
+        Debug.Log($"[BuildingManager] Получено событие изменения статуса долга: _isInDebt = {_isInDebt}");
     }
 
     // FIX #3: Вспомогательные методы для безопасного доступа к Singleton'ам
@@ -371,8 +399,8 @@ public class BuildingManager : MonoBehaviour
     private bool ExecuteBlueprintUpgrade(BuildingIdentity identity)
     {
         // --- ПРОВЕРКИ ---
-        // FIX #3: Безопасная проверка EconomyManager
-        if (EconomyManager.Instance != null && EconomyManager.Instance.IsInDebt)
+        // FIX: Event-driven вместо прямого доступа к EconomyManager
+        if (_isInDebt)
         {
             _notificationManager?.ShowNotification("Мы в долгах! Улучшение невозможно.");
             return false;
@@ -456,8 +484,8 @@ public class BuildingManager : MonoBehaviour
         }
 
         // 2. Проверка долгов
-        // FIX #3: Безопасная проверка EconomyManager
-        if (EconomyManager.Instance != null && EconomyManager.Instance.IsInDebt)
+        // FIX: Event-driven вместо прямого доступа к EconomyManager
+        if (_isInDebt)
         {
             _notificationManager?.ShowNotification("Мы в долгах! Улучшение невозможно.");
             return false;
@@ -690,7 +718,8 @@ public class BuildingManager : MonoBehaviour
     private bool PlaceRealBuilding(Vector2Int rootGridPos)
     {
         // --- ПРОВЕРКА ДОЛГА (в самом верху) ---
-        if (EconomyManager.Instance.IsInDebt)
+        // FIX: Event-driven вместо прямого доступа к EconomyManager
+        if (_isInDebt)
         {
             _notificationManager?.ShowNotification("Мы в долгах! Строительство невозможно.");
             return false;
