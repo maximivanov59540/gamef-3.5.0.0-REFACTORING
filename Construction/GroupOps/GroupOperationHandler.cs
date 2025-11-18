@@ -235,7 +235,7 @@ public void RotateGroupPreview()
 
         int successBuildings = 0;
         int successRoads = 0;
-        bool blueprintMode = BlueprintManager.IsActive;
+        bool blueprintMode = _buildingManager.IsBlueprintModeActive;
 
         // Сначала копируем дороги
         foreach (var roadEntry in _currentRoadOffsets_Copy)

@@ -177,11 +177,11 @@ public class Residence : MonoBehaviour
     private BuildingIdentity _identity;
     private AuraManager _auraManager;
     private ResourceManager _resourceManager;
-    private TaxManager _taxManager;
-    private HappinessManager _happinessManager;
+    // УДАЛЕНО: TaxManager теперь объединен с MoneyManager (автоматический сбор налогов)
+    // УДАЛЕНО: HappinessManager теперь объединен с EventManager
     // УДАЛЕНО: PopulationManager теперь доступен через ResourceManager.Instance.Population
 
-    // Текущий налог (для плавного начисления через TaxManager)
+    // Текущий налог (для автоматического сбора через MoneyManager)
     private float _currentTax;
 
     // Текущее количество жителей (рассчитывается на основе удовлетворения потребностей)
@@ -202,10 +202,10 @@ public class Residence : MonoBehaviour
         _identity = GetComponent<BuildingIdentity>();
         _auraManager = AuraManager.Instance;
         _resourceManager = ResourceManager.Instance;
-        _taxManager = TaxManager.Instance;
-        _happinessManager = HappinessManager.Instance;
+        // TaxManager теперь объединен с MoneyManager (автоматический сбор налогов)
+        // HappinessManager теперь объединен с EventManager
 
-        if (_auraManager == null || _resourceManager == null || _taxManager == null || _happinessManager == null || _resourceManager.Population == null)
+        if (_auraManager == null || _resourceManager == null || EventManager.Instance == null || _resourceManager.Population == null)
         {
             Debug.LogError($"[Residence] на {gameObject.name} не смог найти один из 'мозгов' (Managers). Экономика сломана.");
             this.enabled = false;
@@ -219,7 +219,7 @@ public class Residence : MonoBehaviour
             Debug.Log($"[Residence] {gameObject.name} зарегистрирован в Population: {populationTier}, вместимость: {housingCapacity}");
         }
 
-        // FIX #11: Регистрируемся в BuildingRegistry для TaxManager
+        // FIX #11: Регистрируемся в BuildingRegistry для MoneyManager
         if (BuildingRegistry.Instance != null && !_identity.isBlueprint)
         {
             BuildingRegistry.Instance.RegisterResidence(this);
@@ -413,8 +413,8 @@ public class Residence : MonoBehaviour
         _currentResidents = Mathf.Min(totalPopulation, housingCapacity); // Не превышаем лимит дома
 
         // "Отправляем" итоговые цифры в менеджеры
-        _happinessManager.AddHappiness(totalHappinessChange);
-        _currentTax = totalTax; // TaxManager заберет плавно
+        EventManager.Instance?.AddHappiness(totalHappinessChange);
+        _currentTax = totalTax; // MoneyManager заберет плавно
 
         // Обновляем PopulationManager о текущем количестве жителей
 
@@ -435,7 +435,7 @@ public class Residence : MonoBehaviour
     }
 
     /// <summary>
-    /// Возвращает текущий налог этого дома (для TaxManager).
+    /// Возвращает текущий налог этого дома (для MoneyManager).
     /// </summary>
     public float GetCurrentTax()
     {

@@ -73,21 +73,21 @@ public class UIManager : MonoBehaviour
     // --- FIX #5: Используем OnEnable/OnDisable вместо Start/OnDestroy для событий ---
     private void OnEnable()
     {
-        if (SelectionManager.Instance != null)
-            SelectionManager.Instance.SelectionChanged += OnSelectionChanged;
+        if (PlayerInputController.Instance?.Selection != null)
+            PlayerInputController.Instance.Selection.SelectionChanged += OnSelectionChanged;
     }
 
     private void OnDisable()
     {
-        if (SelectionManager.Instance != null)
-            SelectionManager.Instance.SelectionChanged -= OnSelectionChanged;
+        if (PlayerInputController.Instance?.Selection != null)
+            PlayerInputController.Instance.Selection.SelectionChanged -= OnSelectionChanged;
     }
 
     private void OnDestroy()
     {
         // Дополнительная страховка при удалении объекта
-        if (SelectionManager.Instance != null)
-            SelectionManager.Instance.SelectionChanged -= OnSelectionChanged;
+        if (PlayerInputController.Instance?.Selection != null)
+            PlayerInputController.Instance.Selection.SelectionChanged -= OnSelectionChanged;
     }
     
     private void OnSelectionChanged(IReadOnlyCollection<BuildingIdentity> selection)

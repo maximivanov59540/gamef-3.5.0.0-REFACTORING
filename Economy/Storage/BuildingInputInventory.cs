@@ -28,7 +28,7 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     private Dictionary<ResourceType, StorageData> _resourceLookup = new Dictionary<ResourceType, StorageData>();
 
     private BuildingIdentity _identity;
-    private LogisticsManager _logistics;
+    private RoadManager _roadManager; // UPDATED: LogisticsManager объединен с RoadManager
     public bool IsRequesting { get; private set; } = false;
 
     // ════════════════════════════════════════════════════════════════
@@ -58,11 +58,11 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
 
     private void Start()
     {
-        _logistics = LogisticsManager.Instance;
+        _roadManager = RoadManager.Instance; // UPDATED: LogisticsManager теперь объединен с RoadManager
 
-        if (_logistics == null)
+        if (_roadManager == null)
         {
-            Debug.LogError($"[InputInv] {gameObject.name} не нашел LogisticsManager.Instance!");
+            Debug.LogError($"[InputInv] {gameObject.name} не нашел RoadManager.Instance!");
         }
 
         // ISSUE #8 FIX: Инициализируем словарь для быстрого доступа
@@ -116,13 +116,13 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     private void CreateRequest(StorageData slot)
     {
         var newRequest = new ResourceRequest(
-            this, 
-            slot.resourceType, 
+            this,
+            slot.resourceType,
             priority,
             _identity.rootGridPosition
         );
-        
-        _logistics.CreateRequest(newRequest);
+
+        _roadManager.CreateRequest(newRequest); // UPDATED: используем RoadManager
         _activeRequests[slot.resourceType] = newRequest;
         UpdateIsRequesting();
     }
@@ -131,7 +131,7 @@ public class BuildingInputInventory : MonoBehaviour, IResourceReceiver
     {
         if (_activeRequests.TryGetValue(slot.resourceType, out ResourceRequest request))
         {
-            _logistics.FulfillRequest(request);
+            _roadManager.FulfillRequest(request); // UPDATED: используем RoadManager
             _activeRequests.Remove(slot.resourceType);
             UpdateIsRequesting();
         }

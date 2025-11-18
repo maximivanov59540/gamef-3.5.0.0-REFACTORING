@@ -44,12 +44,12 @@ public class CartPathVisualizer : MonoBehaviour
 
     private void Start()
     {
-        _selection = SelectionManager.Instance;
+        _selection = PlayerInputController.Instance?.Selection;
         if (_selection != null)
         {
             _selection.SelectionChanged += OnSelectionChanged;
             // Проверяем начальное выделение (на всякий случай)
-            OnSelectionChanged(null); 
+            OnSelectionChanged(null);
         }
     }
 

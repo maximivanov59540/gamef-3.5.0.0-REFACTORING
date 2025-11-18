@@ -45,6 +45,11 @@ public class PlayerInputController : MonoBehaviour
     public static InputMode CurrentInputMode { get; private set; } = InputMode.None;
     public static PlayerInputController Instance { get; private set; }
 
+    /// <summary>
+    /// Публичный доступ к SelectionManager (ранее SelectionManager.Instance)
+    /// </summary>
+    public SelectionManager Selection => _selectionManager;
+
     void Awake()
     {
         // --- В AWAKE() МЫ ТЕПЕРЬ ТОЛЬКО ХВАТАЕМ ССЫЛКИ ---

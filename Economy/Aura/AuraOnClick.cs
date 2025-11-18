@@ -21,7 +21,7 @@ public class AuraOnClick : MonoBehaviour
         AuraManager.Instance?.ShowRoadAura(emitter);
 
         // Чтобы выбор в игре оставался согласованным:
-        SelectionManager.Instance?.SelectSingle(identity);
+        PlayerInputController.Instance?.Selection?.SelectSingle(identity);
     }
 
     private void OnDisable()

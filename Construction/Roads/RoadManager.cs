@@ -1,6 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
+/// <summary>
+/// Объединенный менеджер дорог и логистики (PHASE 4/4 - Singleton Reduction)
+/// Объединяет функциональность:
+/// - RoadManager (дороги и граф)
+/// - LogisticsManager (запросы на доставку ресурсов)
+/// </summary>
 public class RoadManager : MonoBehaviour
 {
     public static RoadManager Instance { get; private set; }
@@ -15,9 +22,19 @@ public class RoadManager : MonoBehaviour
 
     [SerializeField] private Transform roadsRoot;
 
+    // === СИСТЕМА ДОРОГ (ранее RoadManager) ===
+
     // FIX ISSUE #1: Замена List на HashSet для O(1) Contains/Add вместо O(n)
     private readonly Dictionary<Vector2Int, HashSet<Vector2Int>> _roadGraph = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
     private static readonly Vector2Int[] DIRS = new[] { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+    // === СИСТЕМА ЛОГИСТИКИ (ранее LogisticsManager) ===
+
+    // "Доска Заказов" - список активных запросов на доставку ресурсов
+    private readonly List<ResourceRequest> _activeRequests = new List<ResourceRequest>();
+
+    // ISSUE #9 FIX: Группировка запросов по типу для O(1) доступа вместо O(n) Where().ToList()
+    private readonly Dictionary<ResourceType, List<ResourceRequest>> _requestsByType = new Dictionary<ResourceType, List<ResourceRequest>>();
 
     // --- (Awake, RebuildGraphFromScene - остаются БЕЗ ИЗМЕНЕНИЙ) ---
     void Awake()
@@ -214,6 +231,119 @@ tiles = UnityEngine.Object.FindObjectsOfType<RoadTile>(includeInactive: true);
         // Дадим знать слушателям, что граф появился
         foreach (var pos in _roadGraph.Keys)
             OnRoadAdded?.Invoke(pos);
+    }
+
+    // === ПУБЛИЧНЫЕ МЕТОДЫ: ЛОГИСТИКА (ранее LogisticsManager) ===
+
+    /// <summary>
+    /// Здание-потребитель (InputInventory) "вешает" свой заказ на доску.
+    /// </summary>
+    public void CreateRequest(ResourceRequest request)
+    {
+        if (!_activeRequests.Contains(request))
+        {
+            _activeRequests.Add(request);
+
+            // ISSUE #9 FIX: Добавляем в словарь группировки
+            if (!_requestsByType.ContainsKey(request.RequestedType))
+            {
+                _requestsByType[request.RequestedType] = new List<ResourceRequest>();
+            }
+            _requestsByType[request.RequestedType].Add(request);
+
+            Debug.Log($"[RoadManager/Logistics] Новый запрос на {request.RequestedType} от {request.Requester.name} (Приоритет: {request.Priority})");
+        }
+    }
+
+    /// <summary>
+    /// Здание-потребитель (InputInventory) "снимает" свой заказ (т.к. склад полон).
+    /// </summary>
+    public void FulfillRequest(ResourceRequest request)
+    {
+        if (_activeRequests.Contains(request))
+        {
+            _activeRequests.Remove(request);
+
+            // ISSUE #9 FIX: Удаляем из словаря группировки
+            if (_requestsByType.TryGetValue(request.RequestedType, out var typeRequests))
+            {
+                typeRequests.Remove(request);
+
+                // Если список пуст, удаляем ключ из словаря
+                if (typeRequests.Count == 0)
+                {
+                    _requestsByType.Remove(request.RequestedType);
+                }
+            }
+
+            Debug.Log($"[RoadManager/Logistics] Запрос на {request.RequestedType} от {request.Requester.name} выполнен/отменен.");
+        }
+    }
+
+    /// <summary>
+    /// Находит лучший запрос для доставки с учетом расстояния и приоритета
+    /// </summary>
+    public ResourceRequest GetBestRequest(Vector2Int cartGridPos, ResourceType resourceToDeliver, float roadRadius)
+    {
+        if (_activeRequests.Count == 0 || gridSystem == null)
+            return null;
+
+        if (_roadGraph == null || _roadGraph.Count == 0) return null;
+
+        // 1. Находим ВСЕ "выходы" тележки
+        List<Vector2Int> cartRoadCells = LogisticsPathfinder.FindAllRoadAccess(cartGridPos, gridSystem, _roadGraph);
+        if (cartRoadCells.Count == 0)
+        {
+            return null; // Тележка сама не у дороги?
+        }
+
+        // 2. ISSUE #9 FIX: Используем словарь вместо Where().ToList() для O(1) доступа
+        if (!_requestsByType.TryGetValue(resourceToDeliver, out var matchingRequests) || matchingRequests.Count == 0)
+            return null;
+
+        // 3. Считаем расстояния от ВСЕХ "выходов" тележки
+        int maxSteps = Mathf.FloorToInt(roadRadius);
+        var distancesFromCart = LogisticsPathfinder.Distances_BFS_Multi(cartRoadCells, maxSteps, _roadGraph);
+
+        // 4. Собираем список "валидных" запросов
+        var validRequests = new List<(ResourceRequest request, int distance)>();
+
+        foreach (var req in matchingRequests)
+        {
+            // Находим ВСЕ "входы" для "заказчика"
+            List<Vector2Int> destRoadCells = LogisticsPathfinder.FindAllRoadAccess(req.DestinationCell, gridSystem, _roadGraph);
+            if (destRoadCells.Count == 0) continue; // Заказчик не у дороги
+
+            // Ищем ЛУЧШИЙ "вход" (ближайший к тележке)
+            int minDistance = int.MaxValue;
+            bool foundAccess = false;
+
+            foreach (var destCell in destRoadCells)
+            {
+                if (distancesFromCart.TryGetValue(destCell, out int dist))
+                {
+                    if (dist < minDistance)
+                    {
+                        minDistance = dist;
+                        foundAccess = true;
+                    }
+                }
+            }
+
+            // Если хотя бы один "вход" достижим
+            if (foundAccess)
+            {
+                validRequests.Add((req, minDistance));
+            }
+        }
+
+        // 5. Сортируем по приоритету, затем по расстоянию
+        var sortedRequests = validRequests
+            .OrderByDescending(r => r.request.Priority)
+            .ThenBy(r => r.distance);
+
+        // 6. Возвращаем лучший запрос
+        return sortedRequests.FirstOrDefault().request;
     }
 }
 
