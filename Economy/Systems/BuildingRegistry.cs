@@ -23,6 +23,7 @@ public class BuildingRegistry : MonoBehaviour
     private readonly List<BuildingOutputInventory> _allOutputs = new List<BuildingOutputInventory>(256);
     private readonly List<BuildingInputInventory> _allInputs = new List<BuildingInputInventory>(256);
     private readonly List<Warehouse> _allWarehouses = new List<Warehouse>(16);
+    private readonly List<BuildingResourceRouting> _allRoutings = new List<BuildingResourceRouting>(256); // 🚀 O(n²) FIX
 
     // === UNITY LIFECYCLE ===
 
@@ -84,6 +85,18 @@ public class BuildingRegistry : MonoBehaviour
         _allWarehouses.Remove(warehouse);
     }
 
+    public void RegisterRouting(BuildingResourceRouting routing)
+    {
+        if (routing == null || _allRoutings.Contains(routing)) return;
+        _allRoutings.Add(routing);
+    }
+
+    public void UnregisterRouting(BuildingResourceRouting routing)
+    {
+        if (routing == null) return;
+        _allRoutings.Remove(routing);
+    }
+
     // === ПОЛУЧЕНИЕ СПИСКОВ (O(1) вместо O(N) с FindObjectsByType) ===
 
     /// <summary>
@@ -113,11 +126,22 @@ public class BuildingRegistry : MonoBehaviour
         return _allWarehouses;
     }
 
+    /// <summary>
+    /// Получить все BuildingResourceRouting (маршрутизация).
+    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// 🚀 O(n²) FIX: Используется вместо FindObjectsByType в балансировке нагрузки
+    /// </summary>
+    public IReadOnlyList<BuildingResourceRouting> GetAllRoutings()
+    {
+        return _allRoutings;
+    }
+
     // === ОТЛАДКА ===
 
     public int GetOutputCount() => _allOutputs.Count;
     public int GetInputCount() => _allInputs.Count;
     public int GetWarehouseCount() => _allWarehouses.Count;
+    public int GetRoutingCount() => _allRoutings.Count;
 
     /// <summary>
     /// Принудительное пересканирование сцены (только для отладки!).
@@ -129,16 +153,19 @@ public class BuildingRegistry : MonoBehaviour
         _allOutputs.Clear();
         _allInputs.Clear();
         _allWarehouses.Clear();
+        _allRoutings.Clear();
 
         var outputs = FindObjectsByType<BuildingOutputInventory>(FindObjectsSortMode.None);
         var inputs = FindObjectsByType<BuildingInputInventory>(FindObjectsSortMode.None);
         var warehouses = FindObjectsByType<Warehouse>(FindObjectsSortMode.None);
+        var routings = FindObjectsByType<BuildingResourceRouting>(FindObjectsSortMode.None);
 
         _allOutputs.AddRange(outputs);
         _allInputs.AddRange(inputs);
         _allWarehouses.AddRange(warehouses);
+        _allRoutings.AddRange(routings);
 
-        Debug.LogWarning($"[BuildingRegistry] Force rescan: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses");
+        Debug.LogWarning($"[BuildingRegistry] Force rescan: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings");
     }
 
     // === СТАТИСТИКА (для UI/отладки) ===
@@ -148,7 +175,7 @@ public class BuildingRegistry : MonoBehaviour
         // Периодически логируем статистику (каждые 60 секунд)
         if (Time.frameCount % 3600 == 0)
         {
-            Debug.Log($"[BuildingRegistry] Статистика: {_allOutputs.Count} производителей, {_allInputs.Count} потребителей, {_allWarehouses.Count} складов");
+            Debug.Log($"[BuildingRegistry] Статистика: {_allOutputs.Count} производителей, {_allInputs.Count} потребителей, {_allWarehouses.Count} складов, {_allRoutings.Count} маршрутов");
         }
     }
 }

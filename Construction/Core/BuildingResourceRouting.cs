@@ -88,6 +88,17 @@ public class BuildingResourceRouting : MonoBehaviour
         RefreshRoutes();
     }
 
+    // 🚀 O(n²) FIX: Автоматическая регистрация в BuildingRegistry
+    private void OnEnable()
+    {
+        BuildingRegistry.Instance?.RegisterRouting(this);
+    }
+
+    private void OnDisable()
+    {
+        BuildingRegistry.Instance?.UnregisterRouting(this);
+    }
+
     void OnDestroy()
     {
         // ✅ НОВОЕ: Отменяем регистрацию при уничтожении здания
@@ -422,16 +433,21 @@ public class BuildingResourceRouting : MonoBehaviour
 
     /// <summary>
     /// ✅ НОВОЕ: Подсчитывает, сколько потребителей уже используют данного производителя как inputSource
+    /// 🚀 O(n²) FIX: Используем BuildingRegistry вместо FindObjectsByType
     /// </summary>
     private int CountConsumersForProducer(BuildingOutputInventory producer)
     {
         int count = 0;
 
-        // Находим все здания с маршрутизацией
-        BuildingResourceRouting[] allRoutings = FindObjectsByType<BuildingResourceRouting>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем кешированный список вместо FindObjectsByType
+        var allRoutings = BuildingRegistry.Instance?.GetAllRoutings();
+        if (allRoutings == null || allRoutings.Count == 0)
+            return 0;
 
-        foreach (var routing in allRoutings)
+        for (int i = 0; i < allRoutings.Count; i++)
         {
+            var routing = allRoutings[i];
+
             // Пропускаем себя
             if (routing == this)
                 continue;
@@ -772,16 +788,21 @@ public class BuildingResourceRouting : MonoBehaviour
 
     /// <summary>
     /// ✅ НОВОЕ: Подсчитывает, сколько поставщиков уже используют данного потребителя как outputDestination
+    /// 🚀 O(n²) FIX: Используем BuildingRegistry вместо FindObjectsByType
     /// </summary>
     private int CountSuppliersForConsumer(BuildingInputInventory consumer)
     {
         int count = 0;
 
-        // Находим все здания с маршрутизацией
-        BuildingResourceRouting[] allRoutings = FindObjectsByType<BuildingResourceRouting>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем кешированный список вместо FindObjectsByType
+        var allRoutings = BuildingRegistry.Instance?.GetAllRoutings();
+        if (allRoutings == null || allRoutings.Count == 0)
+            return 0;
 
-        foreach (var routing in allRoutings)
+        for (int i = 0; i < allRoutings.Count; i++)
         {
+            var routing = allRoutings[i];
+
             // Пропускаем себя
             if (routing == this)
                 continue;
@@ -957,16 +978,21 @@ public class BuildingResourceRouting : MonoBehaviour
 
     /// <summary>
     /// ✅ НОВОЕ: Подсчитывает, сколько производителей уже используют данный склад как outputDestination
+    /// 🚀 O(n²) FIX: Используем BuildingRegistry вместо FindObjectsByType
     /// </summary>
     private int CountProducersForWarehouse(Warehouse warehouse)
     {
         int count = 0;
 
-        // Находим все здания с маршрутизацией
-        BuildingResourceRouting[] allRoutings = FindObjectsByType<BuildingResourceRouting>(FindObjectsSortMode.None);
+        // 🚀 PERFORMANCE FIX: Используем кешированный список вместо FindObjectsByType
+        var allRoutings = BuildingRegistry.Instance?.GetAllRoutings();
+        if (allRoutings == null || allRoutings.Count == 0)
+            return 0;
 
-        foreach (var routing in allRoutings)
+        for (int i = 0; i < allRoutings.Count; i++)
         {
+            var routing = allRoutings[i];
+
             // Пропускаем себя
             if (routing == this)
                 continue;
