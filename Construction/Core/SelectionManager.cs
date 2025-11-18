@@ -2,9 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Менеджер выделения зданий (РАЗЖАЛОВАН из Singleton - теперь доступен через PlayerInputController.Instance.Selection)
+/// </summary>
 public class SelectionManager : MonoBehaviour
 {
-    public static SelectionManager Instance { get; private set; }
+    // УДАЛЕНО: public static SelectionManager Instance (теперь доступ через PlayerInputController.Instance.Selection)
 
     [SerializeField] private GridSystem _gridSystem;
     [SerializeField] private PlayerInputController _playerInputController;
@@ -23,14 +26,7 @@ public class SelectionManager : MonoBehaviour
     // --- КОНЕЦ: НОВЫЙ КОД ДЛЯ ЗАДАЧИ B ---
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            Instance = this;
-        }
+        // УДАЛЕНО: Singleton pattern (теперь доступ через PlayerInputController)
 
         // --- НАЧАЛО: НОВЫЙ КОД ДЛЯ ЗАДАЧИ B ---
 

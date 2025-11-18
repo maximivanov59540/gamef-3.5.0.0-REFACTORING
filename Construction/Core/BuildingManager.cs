@@ -31,6 +31,14 @@ public class BuildingManager : MonoBehaviour
     private bool? _copiedBuildingState = null;
     private AuraEmitter _ghostAuraEmitter = null;
 
+    // === BLUEPRINT MODE (ранее BlueprintManager) ===
+    public bool IsBlueprintModeActive { get; private set; } = false;
+
+    /// <summary>
+    /// Статическое свойство для обратной совместимости с BlueprintManager.IsActive
+    /// </summary>
+    public bool IsBlueprintMode => IsBlueprintModeActive;
+
     // (УДАЛЕНЫ ПОЛЯ STATE_... И _CURRENTSTATE - Фикс #1)
 
 
@@ -51,20 +59,20 @@ public class BuildingManager : MonoBehaviour
     void Start()
     {
         // FIX: Подписываемся на событие изменения статуса долга (event-driven вместо polling)
-        if (EconomyManager.Instance != null)
+        if (MoneyManager.Instance != null)
         {
-            EconomyManager.Instance.OnDebtStatusChanged += HandleDebtStatusChanged;
+            MoneyManager.Instance.OnDebtStatusChanged += HandleDebtStatusChanged;
             // Получаем текущий статус долга при старте
-            _isInDebt = EconomyManager.Instance.IsInDebt;
+            _isInDebt = MoneyManager.Instance.IsInDebt;
         }
     }
 
     void OnDestroy()
     {
         // FIX: Отписываемся от события для избежания memory leaks
-        if (EconomyManager.Instance != null)
+        if (MoneyManager.Instance != null)
         {
-            EconomyManager.Instance.OnDebtStatusChanged -= HandleDebtStatusChanged;
+            MoneyManager.Instance.OnDebtStatusChanged -= HandleDebtStatusChanged;
         }
     }
 
@@ -1162,7 +1170,7 @@ public class BuildingManager : MonoBehaviour
                 else
                 {
                     // "Обычная" "стройка" "зависит" от "режима"
-                    showAsBlueprint = BlueprintManager.IsActive;
+                    showAsBlueprint = IsBlueprintModeActive;
                 }
 
                 if (showAsBlueprint)
@@ -1240,7 +1248,7 @@ public class BuildingManager : MonoBehaviour
     public bool TryPlaceBuilding_MassBuild(Vector2Int gridPos)
     {
         // Проверяем, в режиме "Проектов" ли мы
-        if (BlueprintManager.IsActive && _buildingToMove == null)
+        if (IsBlueprintModeActive && _buildingToMove == null)
         {
             // "Проекты" не тратят ресурсы, они всегда "успех"
             PlaceBlueprint(gridPos);
@@ -1392,6 +1400,27 @@ public class BuildingManager : MonoBehaviour
             {
                 Destroy(rb); 
             }
+        }
+    }
+
+    // === ПУБЛИЧНЫЕ МЕТОДЫ: BLUEPRINT MODE (ранее BlueprintManager) ===
+
+    /// <summary>
+    /// Переключает режим чертежей (Blueprint Mode)
+    /// </summary>
+    public void ToggleBlueprintMode()
+    {
+        IsBlueprintModeActive = !IsBlueprintModeActive;
+
+        Debug.Log($"[BuildingManager] Режим 'Чертежей' теперь: {IsBlueprintModeActive}");
+
+        if (IsBlueprintModeActive)
+        {
+            _notificationManager?.ShowNotification("Режим: Проектирование");
+        }
+        else
+        {
+            _notificationManager?.ShowNotification("Режим: Проектирование выключено");
         }
     }
 }

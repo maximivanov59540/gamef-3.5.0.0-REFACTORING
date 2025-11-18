@@ -178,7 +178,7 @@ public class EventAffected : MonoBehaviour
         // ✅ FIX: Восстанавливаем счастье после завершения события
         // Возвращаем часть потерянного счастья (50% компенсация)
         EventType endedType = CurrentEventType;
-        if (HappinessManager.Instance != null)
+        if (EventManager.Instance != null)
         {
             float compensation = 0f;
             if (endedType == EventType.Pandemic)
@@ -192,7 +192,7 @@ public class EventAffected : MonoBehaviour
 
             if (compensation > 0)
             {
-                HappinessManager.Instance.AddHappiness(compensation);
+                EventManager.Instance.AddHappiness(compensation);
                 Debug.Log($"[EventAffected] {name}: Событие завершено, счастье частично восстановлено (+{compensation})");
             }
         }
@@ -204,14 +204,14 @@ public class EventAffected : MonoBehaviour
     private void ApplyPandemicEffects()
     {
         // ✅ FIX: Реализовано снижение счастья при пандемии
-        if (HappinessManager.Instance != null)
+        if (EventManager.Instance != null)
         {
-            HappinessManager.Instance.AddHappiness(_pandemicHappinessPenalty);
+            EventManager.Instance.AddHappiness(_pandemicHappinessPenalty);
             Debug.Log($"[EventAffected] {name}: Пандемия снизила счастье на {_pandemicHappinessPenalty}");
         }
         else
         {
-            Debug.LogWarning($"[EventAffected] {name}: HappinessManager не найден! Не могу снизить счастье.");
+            Debug.LogWarning($"[EventAffected] {name}: EventManager не найден! Не могу снизить счастье.");
         }
     }
 
@@ -229,14 +229,14 @@ public class EventAffected : MonoBehaviour
         }
 
         // ✅ FIX: Реализовано снижение счастья при бунте
-        if (HappinessManager.Instance != null)
+        if (EventManager.Instance != null)
         {
-            HappinessManager.Instance.AddHappiness(_riotHappinessPenalty);
+            EventManager.Instance.AddHappiness(_riotHappinessPenalty);
             Debug.Log($"[EventAffected] {name}: Бунт снизил счастье на {_riotHappinessPenalty}");
         }
         else
         {
-            Debug.LogWarning($"[EventAffected] {name}: HappinessManager не найден! Не могу снизить счастье.");
+            Debug.LogWarning($"[EventAffected] {name}: EventManager не найден! Не могу снизить счастье.");
         }
     }
 

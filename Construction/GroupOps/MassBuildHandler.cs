@@ -239,7 +239,7 @@ public class MassBuildHandler : MonoBehaviour
         if (visuals != null)
         {
             // "Проверяем", "строим" "ли" "мы" "Проект" "или" "Реал"
-            bool isBlueprintMode = BlueprintManager.IsActive;
+            bool isBlueprintMode = _buildingManager.IsBlueprintModeActive;
             if (isBlueprintMode)
                 visuals.SetState(VisualState.Blueprint, canBuild);
             else

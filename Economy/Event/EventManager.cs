@@ -3,12 +3,18 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Центральный менеджер для управления событиями (пандемия, бунт)
-/// Singleton паттерн
+/// Объединенный менеджер событий и счастья (PHASE 3/4 - Singleton Reduction)
+/// Объединяет функциональность:
+/// - EventManager (пандемии, бунты)
+/// - HappinessManager (счастье населения)
+///
+/// Счастье напрямую влияет на шанс событий, поэтому логично объединить их в одну систему
 /// </summary>
 public class EventManager : MonoBehaviour
 {
     public static EventManager Instance { get; private set; }
+
+    // === СИСТЕМА СОБЫТИЙ (ранее EventManager) ===
 
     [Header("Настройки Системы Событий")]
     [Tooltip("Включить/выключить систему событий")]
@@ -50,18 +56,33 @@ public class EventManager : MonoBehaviour
     [Range(0f, 1f)]
     public float maxHappinessReduction = 0.1f;
 
-    [Header("Статистика (только для чтения)")]
+    [Header("Статистика Событий (только для чтения)")]
     [SerializeField] private int _totalBuildings = 0;
     [SerializeField] private int _buildingsWithPandemic = 0;
     [SerializeField] private int _buildingsWithRiot = 0;
     [SerializeField] private float _nextCheckTime = 0f;
 
-    // --- Внутреннее Состояние ---
+    // === СИСТЕМА СЧАСТЬЯ (ранее HappinessManager) ===
+
+    [Header("=== Настройки Счастья ===")]
+    [Tooltip("Текущий уровень счастья (может быть отрицательным)")]
+    [SerializeField] private float _currentHappiness = 0f;
+
+    [Tooltip("Минимальный уровень счастья (для UI)")]
+    public float minHappiness = -100f;
+
+    [Tooltip("Максимальный уровень счастья (для UI)")]
+    public float maxHappiness = 100f;
+
+    // === События счастья ===
+    public event System.Action<float> OnHappinessChanged;
+
+    // === Внутреннее Состояние ===
 
     private List<EventAffected> _allBuildings = new List<EventAffected>();
     private float _lastCheckTime = 0f;
 
-    // --- Unity Lifecycle ---
+    // === Unity Lifecycle ===
 
     void Awake()
     {
@@ -94,7 +115,82 @@ public class EventManager : MonoBehaviour
         }
     }
 
-    // --- Регистрация Зданий ---
+    // === ПУБЛИЧНЫЕ МЕТОДЫ: СЧАСТЬЕ (ранее HappinessManager) ===
+
+    /// <summary>
+    /// Добавляет счастье (положительное или отрицательное значение)
+    /// </summary>
+    public void AddHappiness(float amount)
+    {
+        _currentHappiness += amount;
+
+        // Ограничиваем диапазон (опционально)
+        // _currentHappiness = Mathf.Clamp(_currentHappiness, minHappiness, maxHappiness);
+
+        // Уведомляем подписчиков
+        OnHappinessChanged?.Invoke(_currentHappiness);
+
+        Debug.Log($"[EventManager] Счастье изменено на {amount:+0.0;-0.0}. Текущее: {_currentHappiness:F1}");
+    }
+
+    /// <summary>
+    /// Устанавливает счастье на конкретное значение
+    /// </summary>
+    public void SetHappiness(float value)
+    {
+        _currentHappiness = value;
+        OnHappinessChanged?.Invoke(_currentHappiness);
+
+        Debug.Log($"[EventManager] Счастье установлено на {_currentHappiness:F1}");
+    }
+
+    /// <summary>
+    /// Возвращает текущий уровень счастья
+    /// </summary>
+    public float GetCurrentHappiness()
+    {
+        return _currentHappiness;
+    }
+
+    /// <summary>
+    /// Возвращает нормализованное счастье (0.0 - 1.0)
+    /// где 0.0 = minHappiness, 1.0 = maxHappiness
+    /// </summary>
+    public float GetNormalizedHappiness()
+    {
+        // Преобразуем диапазон [minHappiness, maxHappiness] в [0, 1]
+        float range = maxHappiness - minHappiness;
+        if (range <= 0) return 0.5f;
+
+        float normalized = (_currentHappiness - minHappiness) / range;
+        return Mathf.Clamp01(normalized);
+    }
+
+    /// <summary>
+    /// Возвращает модификатор счастья для событий (0.0 - 2.0)
+    /// Низкое счастье = высокий модификатор (больше шанс событий)
+    /// Высокое счастье = низкий модификатор (меньше шанс событий)
+    ///
+    /// Примеры:
+    /// - Счастье = -100 → модификатор = 2.0 (вдвое больше шансов на события)
+    /// - Счастье = 0 → модификатор = 1.0 (базовый шанс)
+    /// - Счастье = 100 → модификатор = 0.0 (минимальный шанс событий)
+    /// </summary>
+    public float GetEventChanceModifier()
+    {
+        // Нормализуем счастье (0.0 - 1.0)
+        float normalized = GetNormalizedHappiness();
+
+        // Инвертируем: низкое счастье → высокий модификатор
+        // normalized = 0.0 (очень несчастливы) → модификатор = 2.0
+        // normalized = 0.5 (нейтральные) → модификатор = 1.0
+        // normalized = 1.0 (очень счастливы) → модификатор = 0.0
+        float modifier = 2.0f * (1.0f - normalized);
+
+        return modifier;
+    }
+
+    // === РЕГИСТРАЦИЯ ЗДАНИЙ ===
 
     /// <summary>
     /// Регистрирует здание в системе событий
@@ -121,7 +217,7 @@ public class EventManager : MonoBehaviour
         Debug.Log($"[EventManager] Снято с регистрации: {building.name}. Осталось: {_allBuildings.Count}");
     }
 
-    // --- Проверка Событий ---
+    // === ПРОВЕРКА СОБЫТИЙ ===
 
     /// <summary>
     /// Главная логика проверки событий
@@ -296,8 +392,8 @@ public class EventManager : MonoBehaviour
     {
         float baseChance = eventType == EventType.Pandemic ? basePandemicChance : baseRiotChance;
 
-        // 1. Влияние счастья (получаем из HappinessManager)
-        float happinessModifier = GetHappinessModifier();
+        // 1. Влияние счастья (используем внутренний метод вместо HappinessManager)
+        float happinessModifier = GetEventChanceModifier();
 
         // 2. Влияние аур (больницы/полицейские участки)
         float auraModifier = GetAuraModifier(building, eventType);
@@ -312,19 +408,6 @@ public class EventManager : MonoBehaviour
                   $"(base={baseChance}, happiness={happinessModifier:F2}, aura={auraModifier:F2}, needs={needsModifier:F2})");
 
         return Mathf.Clamp01(finalChance);
-    }
-
-    /// <summary>
-    /// Возвращает модификатор от счастья (0-1, где 1 = нет изменений, <1 = снижение шанса)
-    /// </summary>
-    private float GetHappinessModifier()
-    {
-        if (HappinessManager.Instance == null) return 1f;
-
-        // Используем специальный метод для событий, который учитывает диапазон счастья
-        float modifier = HappinessManager.Instance.GetEventChanceModifier();
-
-        return Mathf.Clamp(modifier, 0.01f, 10f);
     }
 
     /// <summary>
@@ -394,7 +477,7 @@ public class EventManager : MonoBehaviour
         return modifier;
     }
 
-    // --- Утилиты ---
+    // === УТИЛИТЫ ===
 
     /// <summary>
     /// Обновляет статистику для Inspector
