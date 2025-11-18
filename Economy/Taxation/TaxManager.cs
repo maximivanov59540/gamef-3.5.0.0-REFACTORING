@@ -73,13 +73,23 @@ public class TaxManager : MonoBehaviour
 
             float totalIncomePerMinute = 0;
 
-            // Находим все дома на сцене
-            var allResidences = FindObjectsByType<Residence>(FindObjectsSortMode.None);
-
-            foreach (var residence in allResidences)
+            // FIX #11: Используем BuildingRegistry вместо FindObjectsByType каждую минуту
+            if (BuildingRegistry.Instance != null)
             {
-                // Собираем налог с каждого дома
-                totalIncomePerMinute += residence.GetCurrentTax();
+                var allResidences = BuildingRegistry.Instance.GetAllResidences();
+
+                foreach (var residence in allResidences)
+                {
+                    if (residence != null) // Проверяем на null (объект мог быть удален)
+                    {
+                        // Собираем налог с каждого дома
+                        totalIncomePerMinute += residence.GetCurrentTax();
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[TaxManager] BuildingRegistry.Instance == null! Не могу получить список резиденций.");
             }
 
             // Вычисляем доход в секунду

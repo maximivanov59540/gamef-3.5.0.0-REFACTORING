@@ -10,7 +10,10 @@ public class BuildUIManager : MonoBehaviour
     [Header("Элементы UI")]
     [SerializeField] private GameObject buildActionsPanel;
 
-    private bool _isMasterBuildMode = false; 
+    private bool _isMasterBuildMode = false;
+
+    // FIX #9-10: Кешируем ZonedArea вместо FindObjectsByType в UI событиях
+    private ZonedArea[] _cachedZones;
 
     void Start()
     {
@@ -35,6 +38,14 @@ public class BuildUIManager : MonoBehaviour
                 Debug.LogError("BuildUIManager: Не найден 'PlayerInputController' в сцене!", this);
             }
         }
+
+        // FIX #9-10: Кешируем все ZonedArea при старте (вместо поиска в каждом UI событии)
+#if UNITY_2022_2_OR_NEWER
+        _cachedZones = FindObjectsByType<ZonedArea>(FindObjectsSortMode.None);
+#else
+        _cachedZones = FindObjectsOfType<ZonedArea>();
+#endif
+        Debug.Log($"[BuildUIManager] Закешировано {_cachedZones.Length} ZonedArea");
     }
 
     // --- ПУБЛИЧНЫЕ МЕТОДЫ ДЛЯ КНОПОК ---
@@ -54,13 +65,15 @@ public class BuildUIManager : MonoBehaviour
             inputController.SetMode(InputMode.None);
             buildingManager.ShowGrid(false);
 
-#if UNITY_2022_2_OR_NEWER
-            foreach (var zone in FindObjectsByType<ZonedArea>(FindObjectsSortMode.None))
-                zone.HideSlotHighlights();
-#else
-    foreach (var zone in FindObjectsOfType<ZonedArea>())
-        zone.HideSlotHighlights();
-#endif
+            // FIX #9: Используем кешированный массив вместо FindObjectsByType
+            if (_cachedZones != null)
+            {
+                foreach (var zone in _cachedZones)
+                {
+                    if (zone != null) // Проверяем на null (объект мог быть удален)
+                        zone.HideSlotHighlights();
+                }
+            }
         }
 
     }
@@ -127,13 +140,14 @@ public class BuildUIManager : MonoBehaviour
         }
         buildingManager.EnterBuildMode(data);
 
-        // ⬇️ ДОБАВЬ ЭТО: подсветить только подходящие слоты под выбранное здание
-#if UNITY_2022_2_OR_NEWER
-        foreach (var zone in FindObjectsByType<ZonedArea>(FindObjectsSortMode.None))
-            zone.ShowSlotHighlights(data);
-#else
-    foreach (var zone in FindObjectsOfType<ZonedArea>())
-        zone.ShowSlotHighlights(data);
-#endif
+        // FIX #10: Используем кешированный массив вместо FindObjectsByType
+        if (_cachedZones != null)
+        {
+            foreach (var zone in _cachedZones)
+            {
+                if (zone != null) // Проверяем на null (объект мог быть удален)
+                    zone.ShowSlotHighlights(data);
+            }
+        }
     }
 }
