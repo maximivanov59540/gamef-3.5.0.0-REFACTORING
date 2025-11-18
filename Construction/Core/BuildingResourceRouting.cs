@@ -15,11 +15,45 @@ public class BuildingResourceRouting : MonoBehaviour
 {
     [Header("Output Routing (куда отвозить продукцию)")]
     [Tooltip("Целевое здание для Output. Оставьте пустым для автопоиска ближайшего склада")]
-    public Transform outputDestinationTransform;
-    
+    [SerializeField] private Transform _outputDestinationTransform;
+
     [Header("Input Routing (откуда брать сырьё)")]
     [Tooltip("Источник для Input. Оставьте пустым для автопоиска ближайшего склада")]
-    public Transform inputSourceTransform;
+    [SerializeField] private Transform _inputSourceTransform;
+
+    // 🔒 ARCH FIX: Инкапсуляция публичных полей для защиты консистентности
+    // При изменении маршрутов автоматически вызывается RefreshRoutes()
+    public Transform outputDestinationTransform
+    {
+        get => _outputDestinationTransform;
+        set
+        {
+            if (_outputDestinationTransform != value)
+            {
+                _outputDestinationTransform = value;
+                if (_initialized) // Обновляем только если компонент уже инициализирован
+                {
+                    RefreshRoutes();
+                }
+            }
+        }
+    }
+
+    public Transform inputSourceTransform
+    {
+        get => _inputSourceTransform;
+        set
+        {
+            if (_inputSourceTransform != value)
+            {
+                _inputSourceTransform = value;
+                if (_initialized) // Обновляем только если компонент уже инициализирован
+                {
+                    RefreshRoutes();
+                }
+            }
+        }
+    }
     
     [Header("Дебаг (только для чтения)")]
     [SerializeField] private string _outputDestinationName = "не настроен";
@@ -56,6 +90,9 @@ public class BuildingResourceRouting : MonoBehaviour
     private BuildingIdentity _identity;
     private float _retryTimer = 0f;
 
+    // Флаг инициализации (для свойств)
+    private bool _initialized = false;
+
     // Кэшированные системы для поиска путей
     private GridSystem _gridSystem;
     private RoadManager _roadManager;
@@ -86,6 +123,9 @@ public class BuildingResourceRouting : MonoBehaviour
         }
 
         RefreshRoutes();
+
+        // 🔒 ARCH FIX: Помечаем как инициализированный для безопасного использования свойств
+        _initialized = true;
     }
 
     // 🚀 O(n²) FIX: Автоматическая регистрация в BuildingRegistry

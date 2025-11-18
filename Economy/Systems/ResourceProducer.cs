@@ -73,9 +73,56 @@ public class ResourceProducer : MonoBehaviour
     
     void Start()
     {
-        // Start() ТЕПЕРЬ ПУСТОЙ.
-        // Мы перенесли всю логику в Update(), чтобы избежать "гонки"
-        // с RoadManager.Instance.
+        // 🔥 RACE CONDITION FIX: Инициализация с retry логикой через Coroutine
+        // Вместо проверки в Update() каждый кадр, используем отложенную инициализацию
+        StartCoroutine(InitializeWhenReady());
+    }
+
+    /// <summary>
+    /// 🔥 RACE CONDITION FIX: Отложенная инициализация до готовности всех Singleton'ов
+    /// </summary>
+    private System.Collections.IEnumerator InitializeWhenReady()
+    {
+        // Ждем пока все необходимые системы будут готовы
+        while (_gridSystem == null || RoadManager.Instance == null || WorkforceManager.Instance == null)
+        {
+            if (_gridSystem == null)
+            {
+                _gridSystem = FindFirstObjectByType<GridSystem>();
+            }
+
+            // Ждем следующий кадр перед повторной проверкой
+            yield return null;
+        }
+
+        // Все системы готовы - инициализируем
+        _roadManager = RoadManager.Instance;
+
+        // ✅ НОВАЯ ЛОГИКА: Если есть BuildingResourceRouting, используем новую систему
+        if (_routing != null)
+        {
+            // НОВАЯ СИСТЕМА: Проверяем, что маршруты настроены
+            if (_routing.HasOutputDestination())
+            {
+                _hasWarehouseAccess = true;
+                Debug.Log($"[Producer] {gameObject.name}: Использую НОВУЮ систему (BuildingResourceRouting). Доступ к складу = true");
+            }
+            else
+            {
+                Debug.LogWarning($"[Producer] {gameObject.name}: BuildingResourceRouting есть, но маршруты не настроены!");
+                _hasWarehouseAccess = false;
+            }
+        }
+        else
+        {
+            // СТАРАЯ СИСТЕМА: Ищем склад по дорогам
+            FindWarehouseAccess();
+        }
+
+        WorkforceManager.Instance.RegisterProducer(this);
+        _initialized = true;
+
+        Debug.Log($"[Producer] {gameObject.name}: Инициализация завершена успешно");
     }
     
     private void OnDestroy()
@@ -95,53 +142,14 @@ public class ResourceProducer : MonoBehaviour
         }
     }
 
-    // --- Вставь это в ResourceProducer.cs ---
 void Update()
 {
-    // --- ⬇️ НОВЫЙ, БОЛЕЕ НАДЕЖНЫЙ БЛОК ИНИЦИАЛИЗАЦИИ ⬇️ ---
+    // 🔥 RACE CONDITION FIX: Инициализация теперь в Start() через Coroutine
+    // Проверяем только готовность к работе
     if (!_initialized)
     {
-        // "Ленивая" проверка: ждем, пока все "мозги" (синглтоны)
-        // не будут готовы.
-        // 🔥 FIX: Кешируем Instance локально для защиты от race condition
-        var roadManager = RoadManager.Instance;
-        var workforceManager = WorkforceManager.Instance;
-
-        if (roadManager == null || workforceManager == null || _gridSystem == null)
-        {
-            // Если хоть кто-то еще не "проснулся",
-            // просто ждем следующего кадра.
-            if (_gridSystem == null) _gridSystem = FindFirstObjectByType<GridSystem>(); // (GridSystem не синглтон, ищем его)
-            return;
-        }
-
-        // --- Все "мозги" на месте! Инициализируем. ---
-        _roadManager = roadManager;
-        // ✅ НОВАЯ ЛОГИКА: Если есть BuildingResourceRouting, используем новую систему
-        if (_routing != null)
-        {
-            // НОВАЯ СИСТЕМА: Проверяем, что маршруты настроены
-            if (_routing.HasOutputDestination())
-            {
-                _hasWarehouseAccess = true;
-                Debug.Log($"[Producer] {gameObject.name}: Использую НОВУЮ систему (BuildingResourceRouting). Доступ к складу = true");
-            }
-            else
-            {
-                Debug.LogWarning($"[Producer] {gameObject.name}: BuildingResourceRouting есть, но маршруты не настроены!");
-                _hasWarehouseAccess = false;
-            }
-        }
-        else
-        {
-            // СТАРАЯ СИСТЕМА: Ищем склад по дорогам
-            FindWarehouseAccess(); // <-- Вот теперь _roadManager 100% не null
-        }
-        WorkforceManager.Instance.RegisterProducer(this);
-
-        _initialized = true; // Выполняем только один раз
+        return; // Еще не инициализированы - ждем
     }
-    // --- ⬆️ КОНЕЦ НОВОГО БЛОКА ⬆️ ---
 
 
     // 1. Проверка Паузы (старая)
