@@ -279,18 +279,26 @@ public class UIManager : MonoBehaviour
 
         productionPanel.SetActive(true);
 
-        // "Считываем" "текущий" "слайдер" "из" "мозга"
-        float currentEfficiency = producer.GetEfficiency();
-        productivitySlider.value = currentEfficiency;
+        // 🛡️ SAFETY FIX: Проверяем наличие slider перед использованием
+        if (productivitySlider != null)
+        {
+            // "Считываем" "текущий" "слайдер" "из" "мозга"
+            float currentEfficiency = producer.GetEfficiency();
+            productivitySlider.value = currentEfficiency;
+
+            // FIX #6: Безопасное добавление слушателя
+            if (!_sliderListenerActive)
+            {
+                productivitySlider.onValueChanged.AddListener(OnEfficiencySliderChanged);
+                _sliderListenerActive = true;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[UIManager] productivitySlider не назначен в Inspector!");
+        }
 
         UpdateEfficiencyText(producer.GetFinalEfficiency()); // <-- ИСПОЛЬЗУЕМ ГЕТТЕР
-
-        // FIX #6: Безопасное добавление слушателя
-        if (!_sliderListenerActive)
-        {
-            productivitySlider.onValueChanged.AddListener(OnEfficiencySliderChanged);
-            _sliderListenerActive = true;
-        }
     }
     private void OnEfficiencySliderChanged(float value)
     {

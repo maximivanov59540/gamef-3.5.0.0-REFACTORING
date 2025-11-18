@@ -1036,7 +1036,8 @@ public class BuildingManager : MonoBehaviour
         // 6. "РЕЗЕРВИРУЕМ" КЛЕТКИ (как и в PlaceRealBuilding)
         _gridSystem.OccupyCells(identity, _currentRotatedSize);
 
-        // 7. TODO: Нам нужно будет применить "синий" материал "Проекта"
+        // 7. ✅ FIX: Применяем "синий" материал Blueprint через BuildingVisuals
+        // SetBuildingVisuals автоматически применяет корректный визуальный стиль
         SetBuildingVisuals(newBuilding, VisualState.Blueprint, true);
 
         Debug.Log("Проект размещен!");

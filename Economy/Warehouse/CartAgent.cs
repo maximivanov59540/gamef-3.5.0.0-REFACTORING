@@ -421,7 +421,10 @@ public class CartAgent : MonoBehaviour
             return;
         }
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Нужны Input ресурсы: {string.Join(", ", neededTypes)}");
+        #endif
 
         // Есть ли источник?
         IResourceProvider source = _routing.inputSource;
@@ -495,7 +498,10 @@ public class CartAgent : MonoBehaviour
             yield break;
         }
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Пытаюсь загрузить {neededTypes.Count} типов ресурсов: {string.Join(", ", neededTypes)}");
+        #endif
 
         // Очищаем слоты перед загрузкой
         ClearAllCargoSlots();
@@ -1180,7 +1186,10 @@ public class CartAgent : MonoBehaviour
         List<Vector2Int> startAccessPoints = LogisticsPathfinder.FindAllRoadAccess(
             startBuildingCell, _gridSystem, roadGraph);
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Найдено {startAccessPoints.Count} точек доступа к дороге у отправителя: [{string.Join(", ", startAccessPoints)}]");
+        #endif
 
         if (startAccessPoints.Count == 0)
         {
@@ -1191,7 +1200,10 @@ public class CartAgent : MonoBehaviour
         List<Vector2Int> endAccessPoints = LogisticsPathfinder.FindAllRoadAccess(
             destinationCell, _gridSystem, roadGraph);
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Найдено {endAccessPoints.Count} точек доступа к дороге у получателя: [{string.Join(", ", endAccessPoints)}]");
+        #endif
 
         if (endAccessPoints.Count == 0)
         {
