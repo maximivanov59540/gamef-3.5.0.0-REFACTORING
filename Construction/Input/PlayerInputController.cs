@@ -39,6 +39,9 @@ public class PlayerInputController : MonoBehaviour
     private IInputState _currentState;
     private Dictionary<InputMode, IInputState> _states;
 
+    // FIX #8: Кешируем ZonedArea для избежания FindObjectsByType в SetMode
+    private ZonedArea[] _cachedZones;
+
     public static InputMode CurrentInputMode { get; private set; } = InputMode.None;
     public static PlayerInputController Instance { get; private set; }
 
@@ -73,6 +76,14 @@ public class PlayerInputController : MonoBehaviour
         if (_resourceManager == null) _resourceManager = ResourceManager.Instance;
         if (_auraManager == null) _auraManager = AuraManager.Instance;
         if (_roadManager == null) _roadManager = RoadManager.Instance;
+
+        // FIX #8: Кешируем все ZonedArea при старте (один раз вместо каждого SetMode)
+        #if UNITY_2022_2_OR_NEWER
+        _cachedZones = FindObjectsByType<ZonedArea>(FindObjectsSortMode.None);
+        #else
+        _cachedZones = FindObjectsOfType<ZonedArea>();
+        #endif
+        Debug.Log($"[PlayerInputController] Закешировано {_cachedZones.Length} ZonedArea объектов");
 
         // 2. ИНИЦИАЛИЗИРУЕМ "ФАБРИКУ СОСТОЯНИЙ" (Весь этот блок переехал из Awake)
         _states = new Dictionary<InputMode, IInputState>();
@@ -115,16 +126,18 @@ public class PlayerInputController : MonoBehaviour
             CurrentInputMode = InputMode.None;
         }
         
+        // FIX #8: Используем закешированный массив вместо FindObjectsByType каждый раз
         if (CurrentInputMode != InputMode.Building && CurrentInputMode != InputMode.PlacingModule)
         {
-            // (Логика скрытия 'ZonedArea' highlights)
-            #if UNITY_2022_2_OR_NEWER
-            foreach (var zone in FindObjectsByType<ZonedArea>(FindObjectsSortMode.None))
-                zone.HideSlotHighlights();
-            #else
-            foreach (var zone in FindObjectsOfType<ZonedArea>())
-                zone.HideSlotHighlights();
-            #endif
+            // Скрываем highlights на всех ZonedArea
+            if (_cachedZones != null)
+            {
+                foreach (var zone in _cachedZones)
+                {
+                    if (zone != null) // Проверяем на null (объект мог быть удален)
+                        zone.HideSlotHighlights();
+                }
+            }
         }
 
         _currentState.OnEnter(); // <-- ВАЖНО: Вызываем OnEnter() *БЕЗ* параметров
@@ -171,4 +184,18 @@ public class PlayerInputController : MonoBehaviour
     public bool IsPointerOverUI() => EventSystem.current.IsPointerOverGameObject();
     public Vector3 GetMouseWorldPosition() => GridSystem.MouseWorldPosition;
     public void EnterDeletingMode() => SetMode(InputMode.Deleting);
+
+    // FIX #8: Публичный метод для обновления кеша ZonedArea (если они добавляются динамически)
+    /// <summary>
+    /// Обновляет кеш ZonedArea объектов. Вызывайте после добавления/удаления ZonedArea в рантайме.
+    /// </summary>
+    public void RefreshZonedAreaCache()
+    {
+        #if UNITY_2022_2_OR_NEWER
+        _cachedZones = FindObjectsByType<ZonedArea>(FindObjectsSortMode.None);
+        #else
+        _cachedZones = FindObjectsOfType<ZonedArea>();
+        #endif
+        Debug.Log($"[PlayerInputController] Кеш ZonedArea обновлен: {_cachedZones.Length} объектов");
+    }
 }
