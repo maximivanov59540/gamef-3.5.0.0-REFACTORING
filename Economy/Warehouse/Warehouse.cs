@@ -45,7 +45,7 @@ public class Warehouse : MonoBehaviour, IResourceProvider, IResourceReceiver
         // === НОВЫЙ КОД ===
         _identity = GetComponent<BuildingIdentity>();
         _resourceManager = ResourceManager.Instance;
-        
+
         // === СТАРЫЙ КОД ===
         // Находим AuraEmitter на этом же объекте
         _auraEmitter = GetComponent<AuraEmitter>();
@@ -62,6 +62,17 @@ public class Warehouse : MonoBehaviour, IResourceProvider, IResourceReceiver
             Debug.LogWarning($"[Warehouse] AuraEmitter на {gameObject.name} имеет неправильный тип. Исправляем на Warehouse.");
             _auraEmitter.type = AuraType.Warehouse;
         }
+    }
+
+    // 🚀 PERFORMANCE FIX: Автоматическая регистрация в BuildingRegistry
+    private void OnEnable()
+    {
+        BuildingRegistry.Instance?.RegisterWarehouse(this);
+    }
+
+    private void OnDisable()
+    {
+        BuildingRegistry.Instance?.UnregisterWarehouse(this);
     }
 
     void Start()

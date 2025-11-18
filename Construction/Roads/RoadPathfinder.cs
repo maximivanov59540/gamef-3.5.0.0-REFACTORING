@@ -196,13 +196,29 @@ public class RoadPathfinder
         int dx = b.x > a.x ? 1 : (b.x < a.x ? -1 : 0);
         int dz = b.y > a.y ? 1 : (b.y < a.y ? -1 : 0);
 
+        // 🔥 FIX: Защита от бесконечного цикла (grid 500x500, max 1000 итераций)
+        const int MAX_ITERATIONS = 1000;
+        int iterations = 0;
+
         while (x != b.x)
         {
+            if (++iterations > MAX_ITERATIONS)
+            {
+                Debug.LogError($"[RoadPathfinder] SegmentClear: Infinite loop detected! a={a}, b={b}, dx={dx}", _grid);
+                return false;
+            }
             if (_grid.GetBuildingIdentityAt(x, z) != null) return false;
             x += dx;
         }
+
+        iterations = 0; // Сброс счетчика для второго цикла
         while (z != b.y)
         {
+            if (++iterations > MAX_ITERATIONS)
+            {
+                Debug.LogError($"[RoadPathfinder] SegmentClear: Infinite loop detected! a={a}, b={b}, dz={dz}", _grid);
+                return false;
+            }
             if (_grid.GetBuildingIdentityAt(x, z) != null) return false;
             z += dz;
         }
@@ -220,8 +236,32 @@ public class RoadPathfinder
         int dx = b.x > a.x ? 1 : (b.x < a.x ? -1 : 0);
         int dz = b.y > a.y ? 1 : (b.y < a.y ? -1 : 0);
 
-        while (x != b.x) { x += dx; list.Add(new Vector2Int(x, z)); }
-        while (z != b.y) { z += dz; list.Add(new Vector2Int(x, z)); }
+        // 🔥 FIX: Защита от бесконечного цикла
+        const int MAX_ITERATIONS = 1000;
+        int iterations = 0;
+
+        while (x != b.x)
+        {
+            if (++iterations > MAX_ITERATIONS)
+            {
+                Debug.LogError($"[RoadPathfinder] DrawManhattanLine: Infinite loop detected! a={a}, b={b}, dx={dx}");
+                return list; // Возвращаем то что есть
+            }
+            x += dx;
+            list.Add(new Vector2Int(x, z));
+        }
+
+        iterations = 0; // Сброс счетчика
+        while (z != b.y)
+        {
+            if (++iterations > MAX_ITERATIONS)
+            {
+                Debug.LogError($"[RoadPathfinder] DrawManhattanLine: Infinite loop detected! a={a}, b={b}, dz={dz}");
+                return list; // Возвращаем то что есть
+            }
+            z += dz;
+            list.Add(new Vector2Int(x, z));
+        }
         return list;
     }
 
@@ -229,13 +269,39 @@ public class RoadPathfinder
     {
         var list = new List<Vector2Int>();
         int idx = lastIdx;
-        while (idx != -1)
+
+        // 🔥 FIX: Защита от циклических ссылок и бесконечного цикла
+        var visited = new HashSet<int>();
+        const int MAX_PATH_LENGTH = 10000; // Максимальная длина пути
+        int steps = 0;
+
+        while (idx != -1 && ++steps <= MAX_PATH_LENGTH)
         {
+            // Проверка на циклическую ссылку
+            if (!visited.Add(idx))
+            {
+                Debug.LogError($"[RoadPathfinder] Reconstruct: Circular reference detected at idx={idx}!");
+                break;
+            }
+
+            // Проверка валидности индекса
+            if (idx < 0 || idx >= came.Length)
+            {
+                Debug.LogError($"[RoadPathfinder] Reconstruct: Invalid idx={idx} (array length={came.Length})!");
+                break;
+            }
+
             int lx = minX + (idx % W);
             int lz = minZ + (idx / W);
             list.Add(new Vector2Int(lx, lz));
             idx = came[idx];
         }
+
+        if (steps > MAX_PATH_LENGTH)
+        {
+            Debug.LogWarning($"[RoadPathfinder] Reconstruct: Max path length {MAX_PATH_LENGTH} exceeded!");
+        }
+
         list.Reverse();
         return list;
     }

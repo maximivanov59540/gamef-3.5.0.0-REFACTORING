@@ -14,6 +14,8 @@ public class TaxManager : MonoBehaviour
     // Плавное начисление налогов (доход в секунду)
     private float _incomePerSecond;
 
+    private Coroutine _minuteTickCoroutine; // 🔥 FIX: Храним ссылку на корутину
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -36,7 +38,17 @@ public class TaxManager : MonoBehaviour
         }
 
         // Запускаем корутину для обновления налогов каждую минуту
-        StartCoroutine(MinuteTick());
+        _minuteTickCoroutine = StartCoroutine(MinuteTick());
+    }
+
+    // 🔥 FIX: Memory leak - останавливаем корутину при уничтожении
+    private void OnDestroy()
+    {
+        if (_minuteTickCoroutine != null)
+        {
+            StopCoroutine(_minuteTickCoroutine);
+            _minuteTickCoroutine = null;
+        }
     }
 
     private void Update()

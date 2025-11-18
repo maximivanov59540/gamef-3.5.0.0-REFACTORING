@@ -13,6 +13,7 @@ public class EconomyManager : MonoBehaviour
     public bool IsInDebt { get; private set; } = false;
 
     private NotificationManager _notificationManager;
+    private Coroutine _minuteTickCoroutine; // 🔥 FIX: Храним ссылку на корутину
 
     private void Awake()
     {
@@ -29,7 +30,17 @@ public class EconomyManager : MonoBehaviour
     private void Start()
     {
         _notificationManager = FindFirstObjectByType<NotificationManager>();
-        StartCoroutine(MinuteTick());
+        _minuteTickCoroutine = StartCoroutine(MinuteTick());
+    }
+
+    // 🔥 FIX: Memory leak - останавливаем корутину при уничтожении
+    private void OnDestroy()
+    {
+        if (_minuteTickCoroutine != null)
+        {
+            StopCoroutine(_minuteTickCoroutine);
+            _minuteTickCoroutine = null;
+        }
     }
 
     /// <summary>

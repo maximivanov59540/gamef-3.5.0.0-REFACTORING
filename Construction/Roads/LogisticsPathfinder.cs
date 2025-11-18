@@ -148,20 +148,45 @@ public static class LogisticsPathfinder
 
         if (!found)
         {
-            return null; 
+            return null;
         }
 
         var path = new List<Vector2Int>();
         var current = end;
 
-        while (current != start)
+        // 🔥 FIX: Защита от циклических ссылок и бесконечного цикла
+        var visited = new HashSet<Vector2Int>();
+        const int MAX_PATH_LENGTH = 10000; // Максимальная длина пути
+        int steps = 0;
+
+        while (current != start && ++steps <= MAX_PATH_LENGTH)
         {
+            // Проверка на циклическую ссылку
+            if (!visited.Add(current))
+            {
+                Debug.LogError($"[LogisticsPathfinder] FindActualPath: Circular reference detected at {current}!");
+                return null; // Возвращаем null при ошибке
+            }
+
+            // Проверка наличия ключа в словаре
+            if (!cameFrom.ContainsKey(current))
+            {
+                Debug.LogError($"[LogisticsPathfinder] FindActualPath: Missing key {current} in cameFrom dictionary!");
+                return null;
+            }
+
             path.Add(current);
             current = cameFrom[current];
         }
-        
-        path.Add(start); 
-        path.Reverse(); 
+
+        if (steps > MAX_PATH_LENGTH)
+        {
+            Debug.LogWarning($"[LogisticsPathfinder] FindActualPath: Max path length {MAX_PATH_LENGTH} exceeded!");
+            return null;
+        }
+
+        path.Add(start);
+        path.Reverse();
 
         return path;
     }

@@ -46,8 +46,32 @@ public class RoadCoverageVisualizer : MonoBehaviour
         // Подписка на изменения графа — инвалидируем пересчёт
         if (roadManager != null)
         {
-            roadManager.OnRoadAdded += _ => _dirty = true;
-            roadManager.OnRoadRemoved += _ => _dirty = true;
+            roadManager.OnRoadAdded += OnRoadChanged;
+            roadManager.OnRoadRemoved += OnRoadChanged;
+        }
+    }
+
+    // 🔥 FIX: Именованный метод для отписки в OnDestroy
+    private void OnRoadChanged(Vector2Int pos)
+    {
+        _dirty = true;
+    }
+
+    // 🔥 FIX: Memory leak - отписка от событий и остановка корутины
+    private void OnDestroy()
+    {
+        // Отписываемся от событий RoadManager
+        if (roadManager != null)
+        {
+            roadManager.OnRoadAdded -= OnRoadChanged;
+            roadManager.OnRoadRemoved -= OnRoadChanged;
+        }
+
+        // Останавливаем активную корутину fade
+        if (_fadeCo != null)
+        {
+            StopCoroutine(_fadeCo);
+            _fadeCo = null;
         }
     }
     private void Start()

@@ -27,11 +27,22 @@ public class BuildingOutputInventory : MonoBehaviour, IResourceProvider
     void Awake()
     {
         _identity = GetComponent<BuildingIdentity>();
-        
+
         if (_identity == null)
         {
             Debug.LogWarning($"[BuildingOutputInventory] {gameObject.name} не имеет BuildingIdentity!");
         }
+    }
+
+    // 🚀 PERFORMANCE FIX: Автоматическая регистрация в BuildingRegistry
+    private void OnEnable()
+    {
+        BuildingRegistry.Instance?.RegisterOutput(this);
+    }
+
+    private void OnDisable()
+    {
+        BuildingRegistry.Instance?.UnregisterOutput(this);
     }
 
     // ════════════════════════════════════════════════════════════════
