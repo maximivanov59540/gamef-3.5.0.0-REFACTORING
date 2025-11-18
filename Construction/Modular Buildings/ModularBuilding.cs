@@ -19,8 +19,8 @@ public class ModularBuilding : MonoBehaviour
     [Tooltip("Ссылка на Производителя на этом же здании (для бонусов)")]
     public ResourceProducer attachedProducer; // <-- НОВАЯ СТРОКА
 
-    [SerializeField]
-    private List<BuildingModule> _modules = new List<BuildingModule>();
+    // ISSUE #12 FIX: Заменен List на HashSet для O(1) Contains/Add/Remove вместо O(n)
+    private HashSet<BuildingModule> _modules = new HashSet<BuildingModule>();
 
     private void Awake()
     {
@@ -34,9 +34,9 @@ public class ModularBuilding : MonoBehaviour
     /// </summary>
     public void RegisterModule(BuildingModule module)
     {
-        if (!_modules.Contains(module))
+        // ISSUE #12 FIX: HashSet.Add возвращает false если элемент уже существует
+        if (_modules.Add(module))
         {
-            _modules.Add(module);
             module.parentBuilding = this;
 
             // --- ОБНОВЛЕННЫЙ КОД ---
@@ -54,10 +54,9 @@ public class ModularBuilding : MonoBehaviour
     /// </summary>
     public void UnregisterModule(BuildingModule module)
     {
-        if (_modules.Contains(module))
+        // ISSUE #12 FIX: HashSet.Remove возвращает true если элемент был удален
+        if (_modules.Remove(module))
         {
-            _modules.Remove(module);
-
             // --- ОБНОВЛЕННЫЙ КОД ---
             // Сообщаем продюсеру, что кол-во модулей изменилось
             // Передаем и текущее количество, и максимальное для расчета процента
@@ -85,6 +84,7 @@ public class ModularBuilding : MonoBehaviour
 
     /// <summary>
     /// Возвращает все модули (напр., для GridSystem при сносе).
+    /// ISSUE #12 FIX: Создаем List из HashSet для обратной совместимости
     /// </summary>
     public List<BuildingModule> GetRegisteredModules()
     {
