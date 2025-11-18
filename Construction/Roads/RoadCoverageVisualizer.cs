@@ -23,6 +23,8 @@ public class RoadCoverageVisualizer : MonoBehaviour
 
     private readonly Dictionary<RoadTile, Renderer> _roadRenderers = new Dictionary<RoadTile, Renderer>(512);
     private readonly Dictionary<RoadTile, MaterialPropertyBlock> _mpbCache = new Dictionary<RoadTile, MaterialPropertyBlock>(512);
+    // FIX ISSUE #3: Кэш для RoadTileHighlighter компонентов (избегаем GetComponent в циклах)
+    private readonly Dictionary<RoadTile, RoadTileHighlighter> _highlighterCache = new Dictionary<RoadTile, RoadTileHighlighter>(512);
 
     // Активные источники покрытия (может быть несколько рынков/служб)
     private readonly List<CoverageSource> _sources = new List<CoverageSource>(4);
@@ -328,8 +330,9 @@ public class RoadCoverageVisualizer : MonoBehaviour
                 var r = _roadRenderers[tile];
                 if (r != null) r.SetPropertyBlock(null);
 
-                var hl = tile.GetComponent<RoadTileHighlighter>();
-                if (hl != null) hl.SetHighlight(false);
+                // FIX ISSUE #3: Используем кэш вместо GetComponent
+                if (_highlighterCache.TryGetValue(tile, out var hl) && hl != null)
+                    hl.SetHighlight(false);
             }
         }
         // --- КОНЕЦ ИЗМЕНЕНИЯ ---
@@ -352,6 +355,13 @@ public class RoadCoverageVisualizer : MonoBehaviour
                 _roadRenderers[tile] = r; // Добавляем в кэш, чтобы "Clear Pass" о нем знал
             }
 
+            // FIX ISSUE #3: Кэшируем RoadTileHighlighter при первом доступе
+            if (!_highlighterCache.TryGetValue(tile, out var hl))
+            {
+                hl = tile.GetComponent<RoadTileHighlighter>();
+                _highlighterCache[tile] = hl; // Кэшируем (может быть null, это нормально)
+            }
+
             if (!_mpbCache.TryGetValue(tile, out var mpb))
             {
                 mpb = new MaterialPropertyBlock();
@@ -361,7 +371,6 @@ public class RoadCoverageVisualizer : MonoBehaviour
 
             // Цвет: в последних 10% радиуса лёгкий переход к очень светло-голубому,
             // яркость = eff; глоу необязателен — добавим, если у материала есть эмиссия
-            var hl = tile.GetComponent<RoadTileHighlighter>();
             if (hl != null)
             {
                 // тот же цвет, что и в MPB
@@ -383,11 +392,12 @@ public class RoadCoverageVisualizer : MonoBehaviour
         for (int i = _outlineUsed; i < _outlinePool.Count; i++)
             if (_outlinePool[i] != null) _outlinePool[i].gameObject.SetActive(false);
         _outlineUsed = 0;
+        // FIX ISSUE #3: Используем кэш вместо GetComponent
         foreach (var kv in _roadRenderers)
         {
             if (kv.Value != null) kv.Value.SetPropertyBlock(null);
-            var hl = kv.Key.GetComponent<RoadTileHighlighter>();
-            if (hl != null) hl.SetHighlight(false);
+            if (_highlighterCache.TryGetValue(kv.Key, out var hl) && hl != null)
+                hl.SetHighlight(false);
         }
     }
 

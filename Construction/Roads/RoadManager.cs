@@ -15,7 +15,8 @@ public class RoadManager : MonoBehaviour
 
     [SerializeField] private Transform roadsRoot;
 
-    private readonly Dictionary<Vector2Int, List<Vector2Int>> _roadGraph = new Dictionary<Vector2Int, List<Vector2Int>>();
+    // FIX ISSUE #1: Замена List на HashSet для O(1) Contains/Add вместо O(n)
+    private readonly Dictionary<Vector2Int, HashSet<Vector2Int>> _roadGraph = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
     private static readonly Vector2Int[] DIRS = new[] { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
 
     // --- (Awake, RebuildGraphFromScene - остаются БЕЗ ИЗМЕНЕНИЙ) ---
@@ -95,9 +96,9 @@ public class RoadManager : MonoBehaviour
         // Регистрируем в GridSystem
         gridSystem.SetRoadTile(gridPos, roadTileComponent);
 
-        // --- (Код обновления графа - без изменений) ---
+        // --- Обновление графа (FIX ISSUE #1: HashSet.Add автоматически проверяет дубли) ---
         if (!_roadGraph.ContainsKey(gridPos))
-            _roadGraph[gridPos] = new List<Vector2Int>(4);
+            _roadGraph[gridPos] = new HashSet<Vector2Int>();
         foreach (var d in DIRS)
         {
             Vector2Int nb = gridPos + d;
@@ -105,13 +106,11 @@ public class RoadManager : MonoBehaviour
             if (nbTile == null) continue;
 
             if (!_roadGraph.ContainsKey(nb))
-                _roadGraph[nb] = new List<Vector2Int>(4);
+                _roadGraph[nb] = new HashSet<Vector2Int>();
 
-            if (!_roadGraph[gridPos].Contains(nb))
-                _roadGraph[gridPos].Add(nb);
-
-            if (!_roadGraph[nb].Contains(gridPos))
-                _roadGraph[nb].Add(gridPos);
+            // HashSet.Add возвращает false если элемент уже существует, дополнительная проверка не нужна
+            _roadGraph[gridPos].Add(nb);
+            _roadGraph[nb].Add(gridPos);
         }
         OnRoadAdded?.Invoke(gridPos);
     }
@@ -125,13 +124,12 @@ public class RoadManager : MonoBehaviour
         OnRoadRemoved?.Invoke(gridPos);
         if (_roadGraph.TryGetValue(gridPos, out var neighbours))
         {
-            var copy = ListPool<Vector2Int>.Get();
-            copy.AddRange(neighbours);
+            // FIX ISSUE #1: Используем HashSet, копируем чтобы избежать модификации во время итерации
+            var copy = new HashSet<Vector2Int>(neighbours);
             foreach (var nb in copy)
-                if (_roadGraph.TryGetValue(nb, out var list))
-                    list.Remove(gridPos);
+                if (_roadGraph.TryGetValue(nb, out var set))
+                    set.Remove(gridPos);
             _roadGraph.Remove(gridPos);
-            ListPool<Vector2Int>.Release(copy);
         }
         gridSystem.SetRoadTile(gridPos, null);
         Destroy(roadTileComponent.gameObject);
@@ -156,7 +154,8 @@ public class RoadManager : MonoBehaviour
     }
 
     // ── НОВОЕ: публичный доступ к графу ───────────────────────
-    public Dictionary<Vector2Int, List<Vector2Int>> GetRoadGraph() => _roadGraph;
+    // FIX ISSUE #1: Обновлен return type на HashSet
+    public Dictionary<Vector2Int, HashSet<Vector2Int>> GetRoadGraph() => _roadGraph;
     private void RebuildGraphFromScene()
     {
         _roadGraph.Clear();
@@ -190,10 +189,11 @@ tiles = UnityEngine.Object.FindObjectsOfType<RoadTile>(includeInactive: true);
                 gridSystem.SetRoadTile(pos, tile);
 
             if (!_roadGraph.ContainsKey(pos))
-                _roadGraph[pos] = new List<Vector2Int>(4);
+                _roadGraph[pos] = new HashSet<Vector2Int>();
         }
 
         // Подружим соседей (4-направления), как это делается в PlaceRoad(...)
+        // FIX ISSUE #1: HashSet.Add автоматически игнорирует дубликаты
         foreach (var kv in _roadGraph)
         {
             var pos = kv.Key;
@@ -204,12 +204,10 @@ tiles = UnityEngine.Object.FindObjectsOfType<RoadTile>(includeInactive: true);
                 if (nbTile == null) continue;
 
                 if (!_roadGraph.ContainsKey(nb))
-                    _roadGraph[nb] = new List<Vector2Int>(4);
+                    _roadGraph[nb] = new HashSet<Vector2Int>();
 
-                if (!_roadGraph[pos].Contains(nb))
-                    _roadGraph[pos].Add(nb);
-                if (!_roadGraph[nb].Contains(pos))
-                    _roadGraph[nb].Add(pos);
+                _roadGraph[pos].Add(nb);
+                _roadGraph[nb].Add(pos);
             }
         }
 

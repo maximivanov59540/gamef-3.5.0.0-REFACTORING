@@ -20,13 +20,14 @@ public class BuildingRegistry : MonoBehaviour
     public static BuildingRegistry Instance { get; private set; }
 
     // === КЕШИРОВАННЫЕ СПИСКИ ===
-    private readonly List<BuildingOutputInventory> _allOutputs = new List<BuildingOutputInventory>(256);
-    private readonly List<BuildingInputInventory> _allInputs = new List<BuildingInputInventory>(256);
-    private readonly List<Warehouse> _allWarehouses = new List<Warehouse>(16);
-    private readonly List<BuildingResourceRouting> _allRoutings = new List<BuildingResourceRouting>(256); // 🚀 O(n²) FIX
-    private readonly List<Residence> _allResidences = new List<Residence>(128); // FIX #11: Для TaxManager
-    private readonly List<BuildingIdentity> _allBuildings = new List<BuildingIdentity>(512); // FIX #12: Для EconomyManager
-    private readonly List<ResourceProducer> _allProducers = new List<ResourceProducer>(256); // FIX #13: Для Warehouse
+    // FIX ISSUE #2: Замена List на HashSet для O(1) Contains/Add вместо O(n)
+    private readonly HashSet<BuildingOutputInventory> _allOutputs = new HashSet<BuildingOutputInventory>();
+    private readonly HashSet<BuildingInputInventory> _allInputs = new HashSet<BuildingInputInventory>();
+    private readonly HashSet<Warehouse> _allWarehouses = new HashSet<Warehouse>();
+    private readonly HashSet<BuildingResourceRouting> _allRoutings = new HashSet<BuildingResourceRouting>(); // 🚀 O(n²) FIX
+    private readonly HashSet<Residence> _allResidences = new HashSet<Residence>(); // FIX #11: Для TaxManager
+    private readonly HashSet<BuildingIdentity> _allBuildings = new HashSet<BuildingIdentity>(); // FIX #12: Для EconomyManager
+    private readonly HashSet<ResourceProducer> _allProducers = new HashSet<ResourceProducer>(); // FIX #13: Для Warehouse
 
     // === UNITY LIFECYCLE ===
 
@@ -52,10 +53,11 @@ public class BuildingRegistry : MonoBehaviour
 
     // === РЕГИСТРАЦИЯ BUILDINGS ===
 
+    // FIX ISSUE #2: HashSet.Add автоматически проверяет дубли (O(1) вместо O(n))
     public void RegisterOutput(BuildingOutputInventory output)
     {
-        if (output == null || _allOutputs.Contains(output)) return;
-        _allOutputs.Add(output);
+        if (output == null) return;
+        _allOutputs.Add(output); // HashSet игнорирует дубликаты автоматически
     }
 
     public void UnregisterOutput(BuildingOutputInventory output)
@@ -66,7 +68,7 @@ public class BuildingRegistry : MonoBehaviour
 
     public void RegisterInput(BuildingInputInventory input)
     {
-        if (input == null || _allInputs.Contains(input)) return;
+        if (input == null) return;
         _allInputs.Add(input);
     }
 
@@ -78,7 +80,7 @@ public class BuildingRegistry : MonoBehaviour
 
     public void RegisterWarehouse(Warehouse warehouse)
     {
-        if (warehouse == null || _allWarehouses.Contains(warehouse)) return;
+        if (warehouse == null) return;
         _allWarehouses.Add(warehouse);
     }
 
@@ -90,7 +92,7 @@ public class BuildingRegistry : MonoBehaviour
 
     public void RegisterRouting(BuildingResourceRouting routing)
     {
-        if (routing == null || _allRoutings.Contains(routing)) return;
+        if (routing == null) return;
         _allRoutings.Add(routing);
     }
 
@@ -103,7 +105,7 @@ public class BuildingRegistry : MonoBehaviour
     // FIX #11: Регистрация Residence для TaxManager
     public void RegisterResidence(Residence residence)
     {
-        if (residence == null || _allResidences.Contains(residence)) return;
+        if (residence == null) return;
         _allResidences.Add(residence);
     }
 
@@ -116,7 +118,7 @@ public class BuildingRegistry : MonoBehaviour
     // FIX #12: Регистрация BuildingIdentity для EconomyManager
     public void RegisterBuilding(BuildingIdentity building)
     {
-        if (building == null || _allBuildings.Contains(building)) return;
+        if (building == null) return;
         _allBuildings.Add(building);
     }
 
@@ -129,7 +131,7 @@ public class BuildingRegistry : MonoBehaviour
     // FIX #13: Регистрация ResourceProducer для Warehouse
     public void RegisterProducer(ResourceProducer producer)
     {
-        if (producer == null || _allProducers.Contains(producer)) return;
+        if (producer == null) return;
         _allProducers.Add(producer);
     }
 
@@ -140,70 +142,71 @@ public class BuildingRegistry : MonoBehaviour
     }
 
     // === ПОЛУЧЕНИЕ СПИСКОВ (O(1) вместо O(N) с FindObjectsByType) ===
+    // FIX ISSUE #2: HashSet возвращается как IReadOnlyCollection (поддерживает foreach, Count, Contains)
 
     /// <summary>
     /// Получить все BuildingOutputInventory (производители).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// </summary>
-    public IReadOnlyList<BuildingOutputInventory> GetAllOutputs()
+    public IReadOnlyCollection<BuildingOutputInventory> GetAllOutputs()
     {
         return _allOutputs;
     }
 
     /// <summary>
     /// Получить все BuildingInputInventory (потребители).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// </summary>
-    public IReadOnlyList<BuildingInputInventory> GetAllInputs()
+    public IReadOnlyCollection<BuildingInputInventory> GetAllInputs()
     {
         return _allInputs;
     }
 
     /// <summary>
     /// Получить все Warehouse (склады).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// </summary>
-    public IReadOnlyList<Warehouse> GetAllWarehouses()
+    public IReadOnlyCollection<Warehouse> GetAllWarehouses()
     {
         return _allWarehouses;
     }
 
     /// <summary>
     /// Получить все BuildingResourceRouting (маршрутизация).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// 🚀 O(n²) FIX: Используется вместо FindObjectsByType в балансировке нагрузки
     /// </summary>
-    public IReadOnlyList<BuildingResourceRouting> GetAllRoutings()
+    public IReadOnlyCollection<BuildingResourceRouting> GetAllRoutings()
     {
         return _allRoutings;
     }
 
     /// <summary>
     /// Получить все Residence (жилые дома).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// FIX #11: Используется в TaxManager вместо FindObjectsByType каждую минуту
     /// </summary>
-    public IReadOnlyList<Residence> GetAllResidences()
+    public IReadOnlyCollection<Residence> GetAllResidences()
     {
         return _allResidences;
     }
 
     /// <summary>
     /// Получить все BuildingIdentity (все здания).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// FIX #12: Используется в EconomyManager для подсчёта upkeep каждую минуту
     /// </summary>
-    public IReadOnlyList<BuildingIdentity> GetAllBuildings()
+    public IReadOnlyCollection<BuildingIdentity> GetAllBuildings()
     {
         return _allBuildings;
     }
 
     /// <summary>
     /// Получить все ResourceProducer (производители).
-    /// ВАЖНО: Возвращает READ-ONLY список! Не модифицировать!
+    /// ВАЖНО: Возвращает READ-ONLY коллекцию! Не модифицировать!
     /// FIX #13: Используется в Warehouse.RefreshAllProducers() вместо FindObjectsByType
     /// </summary>
-    public IReadOnlyList<ResourceProducer> GetAllProducers()
+    public IReadOnlyCollection<ResourceProducer> GetAllProducers()
     {
         return _allProducers;
     }
@@ -249,13 +252,14 @@ public class BuildingRegistry : MonoBehaviour
         var buildings = FindObjectsByType<BuildingIdentity>(FindObjectsSortMode.None); // FIX #12
         var producers = FindObjectsByType<ResourceProducer>(FindObjectsSortMode.None); // FIX #13
 
-        _allOutputs.AddRange(outputs);
-        _allInputs.AddRange(inputs);
-        _allWarehouses.AddRange(warehouses);
-        _allRoutings.AddRange(routings);
-        _allResidences.AddRange(residences); // FIX #11
-        _allBuildings.AddRange(buildings); // FIX #12
-        _allProducers.AddRange(producers); // FIX #13
+        // FIX ISSUE #2: HashSet использует UnionWith вместо AddRange
+        _allOutputs.UnionWith(outputs);
+        _allInputs.UnionWith(inputs);
+        _allWarehouses.UnionWith(warehouses);
+        _allRoutings.UnionWith(routings);
+        _allResidences.UnionWith(residences); // FIX #11
+        _allBuildings.UnionWith(buildings); // FIX #12
+        _allProducers.UnionWith(producers); // FIX #13
 
         float elapsedMs = (Time.realtimeSinceStartup - startTime) * 1000f;
         Debug.LogWarning($"[BuildingRegistry] Пересканирование завершено за {elapsedMs:F1}ms: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings, {_allResidences.Count} residences, {_allBuildings.Count} buildings, {_allProducers.Count} producers");

@@ -36,16 +36,17 @@ public class AuraManager : MonoBehaviour
     }
 
     // ── регистрация эмиттеров ─────────────────────────────────
-    private readonly List<AuraEmitter> _allEmitters = new List<AuraEmitter>();
+    // FIX ISSUE #5: Замена List на HashSet для O(1) Contains/Add вместо O(n)
+    private readonly HashSet<AuraEmitter> _allEmitters = new HashSet<AuraEmitter>();
 
     public void RegisterEmitter(AuraEmitter emitter)
     {
-        if (!_allEmitters.Contains(emitter)) _allEmitters.Add(emitter);
+        _allEmitters.Add(emitter); // HashSet игнорирует дубликаты автоматически
     }
 
     public void UnregisterEmitter(AuraEmitter emitter)
     {
-        if (_allEmitters.Contains(emitter)) _allEmitters.Remove(emitter);
+        _allEmitters.Remove(emitter);
     }
 
     // ── НОВОЕ: мост к логистике по дорогам ────────────────────

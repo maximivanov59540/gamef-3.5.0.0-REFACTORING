@@ -215,8 +215,8 @@ public class EventManager : MonoBehaviour
             // Дополнительная фильтрация для пандемии (только жилые здания)
             if (eventType == EventType.Pandemic)
             {
-                // Кешируем Residence в EventAffected.Awake для избежания GetComponent здесь
-                if (b.GetComponent<Residence>() == null)
+                // FIX ISSUE #7: Используем кэшированную ссылку вместо GetComponent (O(1) вместо O(n))
+                if (b.CachedResidence == null)
                     continue;
             }
 

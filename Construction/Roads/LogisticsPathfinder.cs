@@ -5,8 +5,9 @@ using System.Linq; // <-- Добавили using
 public static class LogisticsPathfinder
 {
     /// Быстрый ответ «есть ли путь» (как было).
+    /// FIX ISSUE #1: Обновлено для работы с HashSet вместо List
     public static bool HasPath_BFS(Vector2Int start, Vector2Int end,
-        Dictionary<Vector2Int, List<Vector2Int>> graph)
+        Dictionary<Vector2Int, HashSet<Vector2Int>> graph)
     {
         if (start == end) return true;
         if (graph == null) return false;
@@ -24,9 +25,8 @@ public static class LogisticsPathfinder
             if (cur == end) return true;
 
             var neigh = graph[cur];
-            for (int i = 0; i < neigh.Count; i++)
+            foreach (var nb in neigh)
             {
-                var nb = neigh[i];
                 if (visited.Add(nb))
                     q.Enqueue(nb);
             }
@@ -35,10 +35,11 @@ public static class LogisticsPathfinder
     }
 
     /// КАРТА расстояний (в шагах по дорогам) от start до всех достижимых узлов, с отсечкой по maxSteps.
+    /// FIX ISSUE #1: Обновлено для работы с HashSet вместо List
     public static Dictionary<Vector2Int, int> Distances_BFS(
         Vector2Int start,
         int maxSteps,
-        Dictionary<Vector2Int, List<Vector2Int>> graph)
+        Dictionary<Vector2Int, HashSet<Vector2Int>> graph)
     {
         var dist = new Dictionary<Vector2Int, int>(256);
         if (graph == null || !graph.ContainsKey(start)) return dist;
@@ -54,9 +55,8 @@ public static class LogisticsPathfinder
             if (d >= maxSteps) continue;
 
             var neigh = graph[cur];
-            for (int i = 0; i < neigh.Count; i++)
+            foreach (var nb in neigh)
             {
-                var nb = neigh[i];
                 if (!dist.ContainsKey(nb))
                 {
                     dist[nb] = d + 1;
@@ -67,11 +67,11 @@ public static class LogisticsPathfinder
         return dist;
     }
     
-    // --- (Distances_BFS_Multi остается без изменений) ---
+    // FIX ISSUE #1: Обновлено для работы с HashSet вместо List
     public static Dictionary<Vector2Int, int> Distances_BFS_Multi(
     IEnumerable<Vector2Int> starts,
     int maxSteps,
-    Dictionary<Vector2Int, List<Vector2Int>> graph)
+    Dictionary<Vector2Int, HashSet<Vector2Int>> graph)
     {
         var dist = new Dictionary<Vector2Int, int>(256);
         if (graph == null) return dist;
@@ -94,9 +94,8 @@ public static class LogisticsPathfinder
             if (d >= maxSteps) continue;
 
             var neigh = graph[cur];
-            for (int i = 0; i < neigh.Count; i++)
+            foreach (var nb in neigh)
             {
-                var nb = neigh[i];
                 if (!dist.ContainsKey(nb))
                 {
                     dist[nb] = d + 1;
@@ -107,21 +106,21 @@ public static class LogisticsPathfinder
         return dist;
     }
     
-    // --- (FindActualPath остается без изменений) ---
+    // FIX ISSUE #1: Обновлено для работы с HashSet вместо List
     public static List<Vector2Int> FindActualPath(
-        Vector2Int start, 
-        Vector2Int end, 
-        Dictionary<Vector2Int, List<Vector2Int>> graph)
+        Vector2Int start,
+        Vector2Int end,
+        Dictionary<Vector2Int, HashSet<Vector2Int>> graph)
     {
         if (start == end) return new List<Vector2Int> { start };
         if (graph == null) return null;
         if (!graph.ContainsKey(start) || !graph.ContainsKey(end)) return null;
 
         var q = new Queue<Vector2Int>();
-        var cameFrom = new Dictionary<Vector2Int, Vector2Int>(); 
+        var cameFrom = new Dictionary<Vector2Int, Vector2Int>();
 
         q.Enqueue(start);
-        cameFrom[start] = start; 
+        cameFrom[start] = start;
 
         bool found = false;
 
@@ -131,16 +130,15 @@ public static class LogisticsPathfinder
             if (cur == end)
             {
                 found = true;
-                break; 
+                break;
             }
 
             var neigh = graph[cur];
-            for (int i = 0; i < neigh.Count; i++)
+            foreach (var nb in neigh)
             {
-                var nb = neigh[i];
-                if (!cameFrom.ContainsKey(nb)) 
+                if (!cameFrom.ContainsKey(nb))
                 {
-                    cameFrom[nb] = cur; 
+                    cameFrom[nb] = cur;
                     q.Enqueue(nb);
                 }
             }
@@ -196,7 +194,8 @@ public static class LogisticsPathfinder
     /// "УМНЫЙ" ПОИСК (Множественный): Находит ВСЕ клетки дорог у периметра здания.
     /// Если не найдено дорог рядом, ищет в расширенном радиусе.
     /// </summary>
-    public static List<Vector2Int> FindAllRoadAccess(Vector2Int buildingCell, GridSystem gridSystem, Dictionary<Vector2Int, List<Vector2Int>> graph)
+    /// FIX ISSUE #1: Обновлено для работы с HashSet вместо List
+    public static List<Vector2Int> FindAllRoadAccess(Vector2Int buildingCell, GridSystem gridSystem, Dictionary<Vector2Int, HashSet<Vector2Int>> graph)
     {
         var results = new List<Vector2Int>();
         var seen = new HashSet<Vector2Int>(); // Для защиты от дубликатов
@@ -290,39 +289,66 @@ public static class LogisticsPathfinder
 
     /// <summary>
     /// ✅ НОВОЕ: Находит ближайшие дороги в указанном радиусе от точки
+    /// FIX ISSUE #4: Заменен O(n³) алгоритм на BFS для O(n) сложности
     /// </summary>
-    private static List<Vector2Int> FindNearestRoads(Vector2Int center, Dictionary<Vector2Int, List<Vector2Int>> graph, int maxRadius)
+    private static List<Vector2Int> FindNearestRoads(Vector2Int center, Dictionary<Vector2Int, HashSet<Vector2Int>> graph, int maxRadius)
     {
         var results = new List<Vector2Int>();
 
-        // Ищем по спирали от центра наружу
-        for (int radius = 1; radius <= maxRadius; radius++)
+        // FIX ISSUE #4: Используем BFS вместо квадратного сканирования
+        // Это дает O(проверенных клеток) вместо O(radius³)
+        var queue = new Queue<(Vector2Int pos, int distance)>();
+        var visited = new HashSet<Vector2Int>();
+
+        queue.Enqueue((center, 0));
+        visited.Add(center);
+
+        int closestRoadDistance = int.MaxValue;
+
+        while (queue.Count > 0)
         {
-            for (int x = center.x - radius; x <= center.x + radius; x++)
+            var (current, dist) = queue.Dequeue();
+
+            // Если превысили максимальный радиус, пропускаем
+            if (dist > maxRadius) continue;
+
+            // Если уже нашли дороги и текущее расстояние больше, останавливаемся
+            if (dist > closestRoadDistance) break;
+
+            // Проверяем, есть ли дорога в этой клетке
+            if (graph.ContainsKey(current))
             {
-                for (int z = center.y - radius; z <= center.y + radius; z++)
-                {
-                    // Проверяем только клетки на текущем радиусе (периметр квадрата)
-                    if (Mathf.Abs(x - center.x) == radius || Mathf.Abs(z - center.y) == radius)
-                    {
-                        Vector2Int cell = new Vector2Int(x, z);
-                        if (graph.ContainsKey(cell))
-                        {
-                            results.Add(cell);
-                        }
-                    }
-                }
+                results.Add(current);
+                closestRoadDistance = Mathf.Min(closestRoadDistance, dist);
             }
 
-            // Если нашли хотя бы одну дорогу на этом радиусе, останавливаемся
-            if (results.Count > 0)
+            // Добавляем соседей (4 направления)
+            Vector2Int[] neighbors = {
+                current + Vector2Int.up,
+                current + Vector2Int.down,
+                current + Vector2Int.left,
+                current + Vector2Int.right
+            };
+
+            foreach (var neighbor in neighbors)
             {
-                Debug.Log($"[LogisticsPathfinder] Расширенный поиск: найдено {results.Count} дорог на расстоянии {radius} клеток от {center}");
-                return results;
+                if (!visited.Contains(neighbor))
+                {
+                    visited.Add(neighbor);
+                    queue.Enqueue((neighbor, dist + 1));
+                }
             }
         }
 
-        Debug.LogWarning($"[LogisticsPathfinder] Расширенный поиск: НЕ найдено дорог в радиусе {maxRadius} от {center}!");
+        if (results.Count > 0)
+        {
+            Debug.Log($"[LogisticsPathfinder] BFS поиск: найдено {results.Count} дорог на расстоянии {closestRoadDistance} клеток от {center}");
+        }
+        else
+        {
+            Debug.LogWarning($"[LogisticsPathfinder] BFS поиск: НЕ найдено дорог в радиусе {maxRadius} от {center}!");
+        }
+
         return results;
     }
 }

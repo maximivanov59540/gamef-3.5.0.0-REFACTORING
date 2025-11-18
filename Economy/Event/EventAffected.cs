@@ -24,6 +24,9 @@ public class EventAffected : MonoBehaviour
     [Header("Текущее Событие")]
     [SerializeField] private BuildingEvent _currentEvent = new BuildingEvent();
 
+    // FIX ISSUE #7: Кэшируем Residence component чтобы избежать GetComponent в EventManager
+    private Residence _cachedResidence;
+
     // --- Публичные Свойства ---
 
     /// <summary>
@@ -36,7 +39,18 @@ public class EventAffected : MonoBehaviour
     /// </summary>
     public EventType CurrentEventType => _currentEvent?.eventType ?? EventType.None;
 
+    /// <summary>
+    /// FIX ISSUE #7: Кэшированная ссылка на Residence component (может быть null для производственных зданий)
+    /// </summary>
+    public Residence CachedResidence => _cachedResidence;
+
     // --- Публичные Методы ---
+
+    void Awake()
+    {
+        // FIX ISSUE #7: Кэшируем Residence component при инициализации
+        _cachedResidence = GetComponent<Residence>();
+    }
 
     void Start()
     {
