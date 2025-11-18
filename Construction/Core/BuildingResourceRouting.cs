@@ -3,7 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Управляет маршрутизацией ресурсов для производственного здания.
 /// Определяет, КУДА отвозить Output и ОТКУДА брать Input.
-/// 
+/// Реализует IBuildingRouting для уменьшения coupling.
+///
 /// Использование:
 /// - Добавьте на производственное здание
 /// - Настройте маршруты в Inspector:
@@ -11,7 +12,7 @@ using UnityEngine;
 ///   * inputSourceTransform - откуда брать сырьё (или null для автопоиска склада)
 /// </summary>
 [RequireComponent(typeof(BuildingIdentity))]
-public class BuildingResourceRouting : MonoBehaviour
+public class BuildingResourceRouting : MonoBehaviour, IBuildingRouting
 {
     [Header("Output Routing (куда отвозить продукцию)")]
     [Tooltip("Целевое здание для Output. Оставьте пустым для автопоиска ближайшего склада")]
@@ -87,7 +88,9 @@ public class BuildingResourceRouting : MonoBehaviour
     // Кэшированные интерфейсы
     public IResourceReceiver outputDestination { get; private set; }
     public IResourceProvider inputSource { get; private set; }
-    private BuildingIdentity _identity;
+
+    // 🔒 ARCH FIX: Используем интерфейс вместо конкретного класса
+    private IBuildingIdentifiable _identity;  // Было: BuildingIdentity
     private float _retryTimer = 0f;
 
     // Флаг инициализации (для свойств)
@@ -99,11 +102,12 @@ public class BuildingResourceRouting : MonoBehaviour
     
     void Awake()
     {
-        _identity = GetComponent<BuildingIdentity>();
-        
+        // 🔒 ARCH FIX: Используем интерфейс IBuildingIdentifiable
+        _identity = GetComponent<IBuildingIdentifiable>();
+
         if (_identity == null)
         {
-            Debug.LogError($"[BuildingResourceRouting] {gameObject.name} не имеет BuildingIdentity!");
+            Debug.LogError($"[BuildingResourceRouting] {gameObject.name} не имеет IBuildingIdentifiable!");
         }
     }
     
@@ -178,7 +182,7 @@ public class BuildingResourceRouting : MonoBehaviour
                 // Проверяем только автоматически выбранные маршруты (не ручные)
                 if (outputDestination is BuildingInputInventory consumer)
                 {
-                    var outputInv = GetComponent<BuildingOutputInventory>();
+                    var outputInv = GetComponent<IResourceProvider>();
                     if (outputInv != null)
                     {
                         ResourceType producedType = outputInv.GetProvidedResourceType();
@@ -337,7 +341,7 @@ public class BuildingResourceRouting : MonoBehaviour
     private IResourceProvider FindNearestProducerForMyNeeds()
     {
         // 1. Определяем, какой ресурс нам нужен
-        var inputInv = GetComponent<BuildingInputInventory>();
+        var inputInv = GetComponent<IResourceReceiver>();
         if (inputInv == null || inputInv.requiredResources == null || inputInv.requiredResources.Count == 0)
         {
             // Здание не требует Input
@@ -414,7 +418,7 @@ public class BuildingResourceRouting : MonoBehaviour
 
         foreach (var producer in matchingProducers)
         {
-            var producerIdentity = producer.GetComponent<BuildingIdentity>();
+            var producerIdentity = producer.GetComponent<IBuildingIdentifiable>();
             if (producerIdentity == null)
                 continue;
 
@@ -549,7 +553,7 @@ public class BuildingResourceRouting : MonoBehaviour
     private IResourceReceiver FindNearestConsumerForMyOutput()
     {
         // 1. Определяем, какой ресурс мы производим
-        var outputInv = GetComponent<BuildingOutputInventory>();
+        var outputInv = GetComponent<IResourceProvider>();
         if (outputInv == null)
         {
             // Здание не производит Output
@@ -685,7 +689,7 @@ public class BuildingResourceRouting : MonoBehaviour
 
         foreach (var consumer in matchingConsumers)
         {
-            var consumerIdentity = consumer.GetComponent<BuildingIdentity>();
+            var consumerIdentity = consumer.GetComponent<IBuildingIdentifiable>();
             if (consumerIdentity == null)
                 continue;
 
@@ -863,7 +867,7 @@ public class BuildingResourceRouting : MonoBehaviour
     private IResourceReceiver FindBalancedConsumerByDistance(System.Collections.Generic.List<BuildingInputInventory> consumers)
     {
         // Определяем, какой ресурс мы производим (для проверки заполнения)
-        var outputInv = GetComponent<BuildingOutputInventory>();
+        var outputInv = GetComponent<IResourceProvider>();
         ResourceType producedType = ResourceType.None;
         if (outputInv != null)
         {
@@ -959,7 +963,7 @@ public class BuildingResourceRouting : MonoBehaviour
 
         foreach (var wh in warehouses)
         {
-            var whIdentity = wh.GetComponent<BuildingIdentity>();
+            var whIdentity = wh.GetComponent<IBuildingIdentifiable>();
             if (whIdentity == null)
                 continue;
 
@@ -1110,7 +1114,7 @@ public class BuildingResourceRouting : MonoBehaviour
         if (outputDestination == null)
             return false;
         // ✅ ИСПРАВЛЕНИЕ: Проверяем Input только если здание требует сырьё
-        var inputInv = GetComponent<BuildingInputInventory>();
+        var inputInv = GetComponent<IResourceReceiver>();
         if (inputInv != null && inputInv.requiredResources != null && inputInv.requiredResources.Count > 0)
         {
             // Здание требует Input - проверяем, что источник настроен
@@ -1145,7 +1149,7 @@ public class BuildingResourceRouting : MonoBehaviour
         // ✅ АДАПТИВНАЯ КООРДИНАЦИЯ: Регистрируем связь в координаторе
         if (_enableCoordination && outputDestination != null && ResourceCoordinator.Instance != null)
         {
-            var outputInv = GetComponent<BuildingOutputInventory>();
+            var outputInv = GetComponent<IResourceProvider>();
             if (outputInv != null)
             {
                 ResourceType producedType = outputInv.GetProvidedResourceType();
@@ -1218,7 +1222,7 @@ public class BuildingResourceRouting : MonoBehaviour
         if (_enableCoordination && ResourceCoordinator.Instance != null)
         {
             // Определяем тип ресурса
-            var checkOutputInv = GetComponent<BuildingOutputInventory>();
+            var checkOutputInv = GetComponent<IResourceProvider>();
             if (checkOutputInv != null)
             {
                 ResourceType checkProducedType = checkOutputInv.GetProvidedResourceType();
@@ -1251,7 +1255,7 @@ public class BuildingResourceRouting : MonoBehaviour
         IResourceReceiver currentConsumer = outputDestination;
 
         // Определяем, какой ресурс мы производим
-        var outputInv = GetComponent<BuildingOutputInventory>();
+        var outputInv = GetComponent<IResourceProvider>();
         if (outputInv == null)
         {
             Debug.LogWarning($"[Routing] {gameObject.name}: Нет BuildingOutputInventory, rotation отменен");

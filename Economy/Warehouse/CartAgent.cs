@@ -85,9 +85,11 @@ public class CartAgent : MonoBehaviour
 
     private Transform _homeBase;
     private Vector2Int _homePosition;
-    private BuildingOutputInventory _homeOutput;
-    private BuildingInputInventory _homeInput;
-    private BuildingResourceRouting _routing;
+
+    // 🔒 ARCH FIX: Используем интерфейсы вместо конкретных классов (Interface-Based Design)
+    private IResourceProvider _homeOutput;    // Было: BuildingOutputInventory
+    private IResourceReceiver _homeInput;     // Было: BuildingInputInventory
+    private IBuildingRouting _routing;        // Было: BuildingResourceRouting
 
     // ════════════════════════════════════════════════════════════════
     //                ГРУЗОВЫЕ СЛОТЫ (3 слота по 5 единиц)
@@ -129,28 +131,29 @@ public class CartAgent : MonoBehaviour
         }
         
         // 2. Находим компоненты на "доме"
-        _homeOutput = _homeBase.GetComponent<BuildingOutputInventory>();
-        _homeInput = _homeBase.GetComponent<BuildingInputInventory>();
-        _routing = _homeBase.GetComponent<BuildingResourceRouting>();
+        // 🔒 ARCH FIX: Используем интерфейсы для уменьшения coupling
+        _homeOutput = _homeBase.GetComponent<IResourceProvider>();
+        _homeInput = _homeBase.GetComponent<IResourceReceiver>();
+        _routing = _homeBase.GetComponent<IBuildingRouting>();
 
         // FIX #2: Проверяем ВСЕ обязательные компоненты
         if (_homeOutput == null)
         {
-            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingOutputInventory!", this);
+            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет IResourceProvider!", this);
             enabled = false;
             return;
         }
 
         if (_homeInput == null)
         {
-            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingInputInventory!", this);
+            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет IResourceReceiver!", this);
             enabled = false;
             return;
         }
 
         if (_routing == null)
         {
-            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет BuildingResourceRouting!", this);
+            Debug.LogError($"[CartAgent] {name}: На базе {_homeBase.name} нет IBuildingRouting!", this);
             enabled = false;
             return;
         }
@@ -174,7 +177,8 @@ public class CartAgent : MonoBehaviour
         }
         
         // 4. Запоминаем "адрес" дома
-        var identity = _homeBase.GetComponent<BuildingIdentity>();
+        // 🔒 ARCH FIX: Используем интерфейс IBuildingIdentifiable
+        var identity = _homeBase.GetComponent<IBuildingIdentifiable>();
         if (identity != null)
         {
             _homePosition = identity.rootGridPosition;
@@ -1283,11 +1287,12 @@ public class CartAgent : MonoBehaviour
     private Vector2Int GetCurrentHomeCell()
     {
         if (_homeBase == null) return new Vector2Int(-1, -1);
-        
-        var identity = _homeBase.GetComponent<BuildingIdentity>();
+
+        // 🔒 ARCH FIX: Используем интерфейс IBuildingIdentifiable
+        var identity = _homeBase.GetComponent<IBuildingIdentifiable>();
         if (identity != null)
             return identity.rootGridPosition;
-        
+
         _gridSystem.GetXZ(_homeBase.position, out int hx, out int hz);
         return new Vector2Int(hx, hz);
     }

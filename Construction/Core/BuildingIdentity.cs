@@ -1,6 +1,10 @@
 using UnityEngine;
 
-public class BuildingIdentity : MonoBehaviour
+/// <summary>
+/// Компонент идентификации здания в сетке.
+/// Реализует IBuildingIdentifiable для уменьшения coupling.
+/// </summary>
+public class BuildingIdentity : MonoBehaviour, IBuildingIdentifiable
 {
     public BuildingData buildingData;
     public Vector2Int rootGridPosition;
