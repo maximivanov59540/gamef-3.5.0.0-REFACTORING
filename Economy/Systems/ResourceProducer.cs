@@ -63,6 +63,12 @@ public class ResourceProducer : MonoBehaviour
             _outputInv.OnFull += PauseProduction;
             _outputInv.OnSpaceAvailable += ResumeProduction;
         }
+
+        // FIX #13: Регистрируемся в BuildingRegistry для Warehouse
+        if (BuildingRegistry.Instance != null && _identity != null && !_identity.isBlueprint)
+        {
+            BuildingRegistry.Instance.RegisterProducer(this);
+        }
     }
     
     void Start()
@@ -81,6 +87,12 @@ public class ResourceProducer : MonoBehaviour
             _outputInv.OnSpaceAvailable -= ResumeProduction;
         }
         WorkforceManager.Instance?.UnregisterProducer(this);
+
+        // FIX #13: Разрегистрируемся из BuildingRegistry
+        if (BuildingRegistry.Instance != null)
+        {
+            BuildingRegistry.Instance.UnregisterProducer(this);
+        }
     }
 
     // --- Вставь это в ResourceProducer.cs ---

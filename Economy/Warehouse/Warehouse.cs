@@ -94,12 +94,25 @@ public class Warehouse : MonoBehaviour, IResourceProvider, IResourceReceiver
     /// </summary>
     private void RefreshAllProducers()
     {
-        ResourceProducer[] allProducers = FindObjectsByType<ResourceProducer>(FindObjectsSortMode.None);
-        foreach (var producer in allProducers)
+        // FIX #13: Используем BuildingRegistry вместо FindObjectsByType
+        if (BuildingRegistry.Instance != null)
         {
-            producer.RefreshWarehouseAccess();
+            var allProducers = BuildingRegistry.Instance.GetAllProducers();
+            int count = 0;
+            foreach (var producer in allProducers)
+            {
+                if (producer != null) // Проверяем на null (объект мог быть удален)
+                {
+                    producer.RefreshWarehouseAccess();
+                    count++;
+                }
+            }
+            Debug.Log($"[Warehouse] {gameObject.name}: пересчитан доступ для {count} производств (новый радиус: {roadRadius})");
         }
-        Debug.Log($"[Warehouse] {gameObject.name}: пересчитан доступ для {allProducers.Length} производств (новый радиус: {roadRadius})");
+        else
+        {
+            Debug.LogWarning($"[Warehouse] {gameObject.name}: BuildingRegistry.Instance == null! Не могу обновить производителей.");
+        }
     }
 
     // ════════════════════════════════════════════════════════════════

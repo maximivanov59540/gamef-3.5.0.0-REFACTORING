@@ -130,9 +130,9 @@ public class EventManager : MonoBehaviour
     {
         Debug.Log($"[EventManager] Проверка событий ({_allBuildings.Count} зданий)...");
 
-        // Проверяем, есть ли активные события в городе
-        bool hasActivePandemic = _allBuildings.Any(b => b.CurrentEventType == EventType.Pandemic);
-        bool hasActiveRiot = _allBuildings.Any(b => b.CurrentEventType == EventType.Riot);
+        // FIX #16: Используем кешированные счетчики вместо LINQ .Any()
+        bool hasActivePandemic = _buildingsWithPandemic > 0;
+        bool hasActiveRiot = _buildingsWithRiot > 0;
 
         // Определяем, какое событие может произойти
         bool canTriggerPandemic = pandemicsUnlocked && !hasActiveRiot;
@@ -198,19 +198,29 @@ public class EventManager : MonoBehaviour
     /// </summary>
     private void TriggerEvent(EventType eventType)
     {
-        // Фильтруем здания по типу события
-        List<EventAffected> eligibleBuildings = _allBuildings
-            .Where(b => b != null && !b.HasActiveEvent)
-            .Where(b => eventType == EventType.Pandemic ? b.canGetPandemic : b.canRiot)
-            .ToList();
+        // FIX #15: Заменили LINQ на простой цикл (убираем GC аллокации)
+        List<EventAffected> eligibleBuildings = new List<EventAffected>();
 
-        // Дополнительная фильтрация по типу здания
-        if (eventType == EventType.Pandemic)
+        foreach (var b in _allBuildings)
         {
-            // Пандемия только для жилых зданий
-            eligibleBuildings = eligibleBuildings
-                .Where(b => b.GetComponent<Residence>() != null)
-                .ToList();
+            // Пропускаем null и здания с активными событиями
+            if (b == null || b.HasActiveEvent)
+                continue;
+
+            // Проверяем по типу события
+            bool canAffect = eventType == EventType.Pandemic ? b.canGetPandemic : b.canRiot;
+            if (!canAffect)
+                continue;
+
+            // Дополнительная фильтрация для пандемии (только жилые здания)
+            if (eventType == EventType.Pandemic)
+            {
+                // Кешируем Residence в EventAffected.Awake для избежания GetComponent здесь
+                if (b.GetComponent<Residence>() == null)
+                    continue;
+            }
+
+            eligibleBuildings.Add(b);
         }
 
         if (eligibleBuildings.Count == 0)
