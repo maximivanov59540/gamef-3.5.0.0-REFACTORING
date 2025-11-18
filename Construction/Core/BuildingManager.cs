@@ -99,10 +99,17 @@ public class BuildingManager : MonoBehaviour
         _ghostBuilding = Instantiate(buildingData.buildingPrefab);
         _ghostBuilding.layer = LayerMask.NameToLayer("Ghost");
 
-        var producers = _ghostBuilding.GetComponentsInChildren<ResourceProducer>();
-        foreach (var p in producers) p.enabled = false;
+        // 🚀 PERF FIX: Используем кеш из BuildingIdentity вместо GetComponentsInChildren
         var identity = _ghostBuilding.GetComponent<BuildingIdentity>();
-        if (identity != null) identity.enabled = false;
+        if (identity != null)
+        {
+            identity.CacheComponents(); // Инициализируем кеш если нужно
+            foreach (var p in identity.cachedProducers)
+            {
+                if (p != null) p.enabled = false;
+            }
+            identity.enabled = false;
+        }
 
         _ghostAuraEmitter = _ghostBuilding.GetComponent<AuraEmitter>();
         SetupGhostCollider(buildingData.size);
@@ -769,10 +776,17 @@ public class BuildingManager : MonoBehaviour
 
             SetBuildingVisuals(newBuilding, VisualState.Real, true);
 
-            var producers = newBuilding.GetComponentsInChildren<ResourceProducer>();
-            foreach (var p in producers) p.enabled = true;
+            // 🚀 PERF FIX: Используем кеш из BuildingIdentity вместо GetComponentsInChildren
             var id_comp = newBuilding.GetComponent<BuildingIdentity>();
-            if (id_comp != null) id_comp.enabled = true;
+            if (id_comp != null)
+            {
+                id_comp.CacheComponents(); // Инициализируем кеш если нужно
+                foreach (var p in id_comp.cachedProducers)
+                {
+                    if (p != null) p.enabled = true;
+                }
+                id_comp.enabled = true;
+            }
 
             _resourceManager.SpendResources(_selectedBuildingData);
             if (_selectedBuildingData.housingCapacity > 0)
@@ -1294,10 +1308,24 @@ public class BuildingManager : MonoBehaviour
     {
         if (building == null) return;
 
+        // 🚀 PERF FIX: Используем кеш из BuildingIdentity вместо GetComponentsInChildren
+        var identity = building.GetComponent<BuildingIdentity>();
+        Collider[] colliders;
+
+        if (identity != null && identity.cachedColliders != null && identity.cachedColliders.Length > 0)
+        {
+            colliders = identity.cachedColliders;
+        }
+        else
+        {
+            // Fallback: если кеш не создан (старые здания), используем GetComponentsInChildren
+            colliders = building.GetComponentsInChildren<Collider>();
+        }
+
         // 1. Настраиваем ВСЕ коллайдеры (включая дочерние)
-        var colliders = building.GetComponentsInChildren<Collider>();
         foreach (var col in colliders)
         {
+            if (col == null) continue;
             // "Призрак" = триггер, "Живой" = не триггер
             col.isTrigger = makeGhost;
         }

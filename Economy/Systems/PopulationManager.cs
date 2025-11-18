@@ -12,6 +12,11 @@ public class PopulationManager : MonoBehaviour
 {
     public static PopulationManager Instance { get; private set; }
 
+    // 🔔 PERF FIX: События для уведомления UI об изменениях населения
+    // Используется вместо Update() в UI компонентах для event-driven обновления
+    public event System.Action<PopulationTier> OnPopulationChanged;
+    public event System.Action OnAnyPopulationChanged; // Для общего обновления UI
+
     [Header("Население по уровням")]
     [Tooltip("Текущее население по каждому уровню")]
     [SerializeField] private Dictionary<PopulationTier, int> _currentPopulation = new Dictionary<PopulationTier, int>();
@@ -89,6 +94,10 @@ public class PopulationManager : MonoBehaviour
         Debug.Log($"[PopulationManager] Лимит жилья для {tier} увеличен на {amount}. Новый лимит: {_maxPopulation[tier]}");
 
         UpdateWorkforceManager();
+
+        // 🔔 PERF FIX: Уведомляем подписчиков об изменении
+        OnPopulationChanged?.Invoke(tier);
+        OnAnyPopulationChanged?.Invoke();
     }
 
     /// <summary>
@@ -112,6 +121,10 @@ public class PopulationManager : MonoBehaviour
         Debug.Log($"[PopulationManager] Лимит жилья для {tier} уменьшен на {amount}. Новый лимит: {_maxPopulation[tier]}");
 
         UpdateWorkforceManager();
+
+        // 🔔 PERF FIX: Уведомляем подписчиков об изменении
+        OnPopulationChanged?.Invoke(tier);
+        OnAnyPopulationChanged?.Invoke();
     }
 
     /// <summary>
@@ -135,6 +148,10 @@ public class PopulationManager : MonoBehaviour
         {
             Debug.Log($"[PopulationManager] Текущее население {tier} изменено: {oldAmount} -> {_currentPopulation[tier]}");
             UpdateWorkforceManager();
+
+            // 🔔 PERF FIX: Уведомляем подписчиков об изменении
+            OnPopulationChanged?.Invoke(tier);
+            OnAnyPopulationChanged?.Invoke();
         }
     }
 

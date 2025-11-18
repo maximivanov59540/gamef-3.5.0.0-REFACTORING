@@ -26,7 +26,7 @@ public class UIResourceDisplay : MonoBehaviour
         if (resourceManager == null)
             resourceManager = ResourceManager.Instance;
         if (populationManager == null)
-            populationManager = FindFirstObjectByType<PopulationManager>();
+            populationManager = PopulationManager.Instance;
         if (moneyManager == null)
             moneyManager = MoneyManager.Instance;
 
@@ -40,7 +40,9 @@ public class UIResourceDisplay : MonoBehaviour
         if (moneyManager != null)
             moneyManager.OnMoneyChanged += OnMoneyChanged;
 
-        // TODO: Добавить события для PopulationManager если они есть
+        // 🔔 PERF FIX: Подписываемся на события PopulationManager
+        if (populationManager != null)
+            populationManager.OnAnyPopulationChanged += OnPopulationChanged;
     }
 
     void OnDestroy()
@@ -51,6 +53,10 @@ public class UIResourceDisplay : MonoBehaviour
 
         if (moneyManager != null)
             moneyManager.OnMoneyChanged -= OnMoneyChanged;
+
+        // 🔔 PERF FIX: Отписываемся от событий PopulationManager
+        if (populationManager != null)
+            populationManager.OnAnyPopulationChanged -= OnPopulationChanged;
     }
 
     // FIX #14: Обновляем только при изменении ресурсов
@@ -83,6 +89,17 @@ public class UIResourceDisplay : MonoBehaviour
             moneyText.text = string.Format("Деньги: {0}", Mathf.FloorToInt(newAmount));
     }
 
+    // 🔔 PERF FIX: Обновляем только при изменении населения
+    private void OnPopulationChanged()
+    {
+        if (populationManager != null && populationText != null)
+        {
+            int current = populationManager.GetTotalCurrentPopulation();
+            int max = populationManager.GetTotalMaxPopulation();
+            populationText.text = string.Format("Население: {0} / {1}", current, max);
+        }
+    }
+
     // Вспомогательный метод для обновления всех дисплеев
     private void UpdateAllDisplays()
     {
@@ -93,11 +110,8 @@ public class UIResourceDisplay : MonoBehaviour
             OnResourceChanged(ResourceType.Planks);
         }
 
-        if (populationManager != null && populationText != null)
-        {
-            // Население пока оставляем в Update (если нет событий)
-            populationText.text = string.Format("Население: {0} / {1}", populationManager.currentPopulation, populationManager.maxPopulation);
-        }
+        // 🔔 PERF FIX: Используем event-driven обновление вместо Update()
+        OnPopulationChanged();
 
         if (moneyManager != null)
         {
@@ -105,13 +119,6 @@ public class UIResourceDisplay : MonoBehaviour
         }
     }
 
-    // FIX #14: Update теперь обновляет только население (если нет событий для него)
-    void Update()
-    {
-        // Обновляем только население (т.к. у PopulationManager может не быть событий)
-        if (populationManager != null && populationText != null)
-        {
-            populationText.text = string.Format("Население: {0} / {1}", populationManager.currentPopulation, populationManager.maxPopulation);
-        }
-    }
+    // 🔔 PERF FIX: Update() больше не нужен - используем события!
+    // Удалено для устранения ненужных обновлений каждый кадр
 }
