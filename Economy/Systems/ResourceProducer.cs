@@ -8,8 +8,6 @@ public class ResourceProducer : MonoBehaviour
     // ISSUE #10 FIX: Кэшированный словарь для O(1) доступа к inputCosts вместо O(n) Find
     private Dictionary<ResourceType, ResourceCost> _inputCostLookup = new Dictionary<ResourceType, ResourceCost>();
 
-    private BuildingInputInventory _inputInv;
-    private BuildingOutputInventory _outputInv;
     [Header("Рабочая Сила")]
     [Tooltip("Тип работников, требуемых для этого здания (Farmers/Craftsmen/Artisans)")]
     public PopulationTier requiredWorkerType = PopulationTier.Farmers;
@@ -44,23 +42,30 @@ public class ResourceProducer : MonoBehaviour
     [SerializeField] private Warehouse _assignedWarehouse; // Склад, к которому мы "приписаны"
     private bool _hasWarehouseAccess = false; // Наш "пропуск" к работе
     
-    private BuildingIdentity _identity;
+    // 🔒 ARCH FIX: Используем интерфейсы вместо конкретных классов
+    private IBuildingIdentifiable _identity;     // Было: BuildingIdentity
+    private IBuildingRouting _routing;           // Было: BuildingResourceRouting
+
     private GridSystem _gridSystem;
     private RoadManager _roadManager;
-    private BuildingResourceRouting _routing;
+
+    // 🔒 ARCH FIX: Используем интерфейсы для inventory компонентов
+    private IResourceReceiver _inputInv;         // Было: BuildingInputInventory
+    private IResourceProvider _outputInv;        // Было: BuildingOutputInventory
 
     private bool _initialized = false;
 
     void Awake()
     {
-        _inputInv = GetComponent<BuildingInputInventory>();
-        _outputInv = GetComponent<BuildingOutputInventory>();
-        _identity = GetComponent<BuildingIdentity>();
-        _routing = GetComponent<BuildingResourceRouting>(); // НОВОЕ: ищем маршрутизацию
+        // 🔒 ARCH FIX: Используем интерфейсы для уменьшения coupling
+        _inputInv = GetComponent<IResourceReceiver>();
+        _outputInv = GetComponent<IResourceProvider>();
+        _identity = GetComponent<IBuildingIdentifiable>();
+        _routing = GetComponent<IBuildingRouting>();
         if (_inputInv == null && productionData != null && productionData.inputCosts.Count > 0)
-            Debug.LogError($"На здании {gameObject.name} нет 'BuildingInputInventory', но рецепт требует сырье!", this);
+            Debug.LogError($"На здании {gameObject.name} нет 'IResourceReceiver', но рецепт требует сырье!", this);
         if (_outputInv == null && productionData != null && productionData.outputYield.amount > 0)
-            Debug.LogError($"На здании {gameObject.name} нет 'BuildingOutputInventory', но рецепт производит товар!", this);
+            Debug.LogError($"На здании {gameObject.name} нет 'IResourceProvider', но рецепт производит товар!", this);
         if (_outputInv != null)
         {
             _outputInv.OnFull += PauseProduction;
@@ -358,7 +363,7 @@ private void FindWarehouseAccess()
 
     foreach (var warehouse in allWarehouses)
     {
-        var warehouseIdentity = warehouse.GetComponent<BuildingIdentity>();
+        var warehouseIdentity = warehouse.GetComponent<IBuildingIdentifiable>();
         if (warehouseIdentity == null) continue;
         
         List<Vector2Int> warehouseAccessPoints = LogisticsPathfinder.FindAllRoadAccess(warehouseIdentity.rootGridPosition, _gridSystem, roadGraph);

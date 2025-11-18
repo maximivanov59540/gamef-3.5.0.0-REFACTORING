@@ -301,7 +301,7 @@ public void RotateGroupPreview()
                 GameObject go = liftedData.gameObject;
                 if (go == null) continue;
 
-                var id = go.GetComponent<BuildingIdentity>();
+                var id = go.GetComponent<IBuildingIdentifiable>();
                 if (id == null) continue;
 
                 Vector2Int origPos = liftedData.originalPosition;
@@ -478,7 +478,7 @@ public void RotateGroupPreview()
         {
             GameObject go = liftedData.gameObject;
             GroupOffset entry = liftedData.offset;
-            var id = go.GetComponent<BuildingIdentity>();
+            var id = go.GetComponent<IBuildingIdentifiable>();
             bool wasBlueprint = id.isBlueprint;
 
             Vector2Int rotatedOffset = RotateVector(entry.offset, _currentGroupRotation);
@@ -521,7 +521,7 @@ public void RotateGroupPreview()
 
         var producer = ghost.GetComponent<ResourceProducer>();
         if (producer != null) producer.enabled = false;
-        var identity = ghost.GetComponent<BuildingIdentity>();
+        var identity = ghost.GetComponent<IBuildingIdentifiable>();
         if (identity != null) identity.enabled = false;
         
         // --- УМНАЯ НАСТРОЙКА ФИЗИКИ ---
