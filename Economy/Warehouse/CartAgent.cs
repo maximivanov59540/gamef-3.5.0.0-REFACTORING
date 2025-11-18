@@ -421,7 +421,10 @@ public class CartAgent : MonoBehaviour
             return;
         }
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Нужны Input ресурсы: {string.Join(", ", neededTypes)}");
+        #endif
 
         // Есть ли источник?
         IResourceProvider source = _routing.inputSource;
@@ -495,7 +498,10 @@ public class CartAgent : MonoBehaviour
             yield break;
         }
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Пытаюсь загрузить {neededTypes.Count} типов ресурсов: {string.Join(", ", neededTypes)}");
+        #endif
 
         // Очищаем слоты перед загрузкой
         ClearAllCargoSlots();
@@ -681,6 +687,7 @@ public class CartAgent : MonoBehaviour
     /// <summary>
     /// Возвращает список нужных Input ресурсов (до maxCount типов)
     /// Приоритет отдается наиболее пустым слотам
+    /// 🚀 PERF FIX: Заменен LINQ на обычный цикл для устранения GC аллокаций
     /// </summary>
     private List<ResourceType> GetNeededInputTypes(int maxCount)
     {
@@ -689,15 +696,57 @@ public class CartAgent : MonoBehaviour
         if (_homeInput == null || _homeInput.requiredResources == null || _homeInput.requiredResources.Count == 0)
             return result;
 
-        // Сортируем слоты по fill ratio (сначала самые пустые)
-        var sortedSlots = _homeInput.requiredResources
-            .Where(slot => slot.maxAmount > 0 && slot.currentAmount / slot.maxAmount < 0.9f)
-            .OrderBy(slot => slot.currentAmount / slot.maxAmount)
-            .Take(maxCount);
+        // 🚀 ОПТИМИЗАЦИЯ: Используем массивы вместо LINQ для избежания аллокаций
+        int slotCount = _homeInput.requiredResources.Count;
 
-        foreach (var slot in sortedSlots)
+        // Временные массивы для сортировки (стек-аллокация, не GC)
+        int[] validIndices = new int[slotCount];
+        float[] fillRatios = new float[slotCount];
+        int validCount = 0;
+
+        // Собираем индексы незаполненных слотов
+        for (int i = 0; i < slotCount; i++)
         {
-            result.Add(slot.resourceType);
+            var slot = _homeInput.requiredResources[i];
+            if (slot.maxAmount > 0)
+            {
+                float ratio = slot.currentAmount / slot.maxAmount;
+                if (ratio < 0.9f)
+                {
+                    validIndices[validCount] = i;
+                    fillRatios[validCount] = ratio;
+                    validCount++;
+                }
+            }
+        }
+
+        // Если нет незаполненных слотов - возвращаем пустой список
+        if (validCount == 0)
+            return result;
+
+        // Сортируем по fill ratio (insertion sort - эффективен для малых массивов)
+        for (int i = 1; i < validCount; i++)
+        {
+            float currentRatio = fillRatios[i];
+            int currentIndex = validIndices[i];
+            int j = i - 1;
+
+            while (j >= 0 && fillRatios[j] > currentRatio)
+            {
+                fillRatios[j + 1] = fillRatios[j];
+                validIndices[j + 1] = validIndices[j];
+                j--;
+            }
+
+            fillRatios[j + 1] = currentRatio;
+            validIndices[j + 1] = currentIndex;
+        }
+
+        // Берем первые maxCount элементов
+        int takeCount = Mathf.Min(validCount, maxCount);
+        for (int i = 0; i < takeCount; i++)
+        {
+            result.Add(_homeInput.requiredResources[validIndices[i]].resourceType);
         }
 
         return result;
@@ -1137,7 +1186,10 @@ public class CartAgent : MonoBehaviour
         List<Vector2Int> startAccessPoints = LogisticsPathfinder.FindAllRoadAccess(
             startBuildingCell, _gridSystem, roadGraph);
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Найдено {startAccessPoints.Count} точек доступа к дороге у отправителя: [{string.Join(", ", startAccessPoints)}]");
+        #endif
 
         if (startAccessPoints.Count == 0)
         {
@@ -1148,7 +1200,10 @@ public class CartAgent : MonoBehaviour
         List<Vector2Int> endAccessPoints = LogisticsPathfinder.FindAllRoadAccess(
             destinationCell, _gridSystem, roadGraph);
 
+        #if UNITY_EDITOR
+        // 🚀 PERF FIX: Debug.Log только в редакторе, не в production build
         Debug.Log($"[CartAgent] {name}: Найдено {endAccessPoints.Count} точек доступа к дороге у получателя: [{string.Join(", ", endAccessPoints)}]");
+        #endif
 
         if (endAccessPoints.Count == 0)
         {

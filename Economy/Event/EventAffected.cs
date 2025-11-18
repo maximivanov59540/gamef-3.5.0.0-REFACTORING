@@ -14,6 +14,13 @@ public class EventAffected : MonoBehaviour
     [Tooltip("Может ли здание бунтовать")]
     public bool canRiot = true;
 
+    [Header("Эффекты на Счастье")]
+    [Tooltip("Снижение счастья при пандемии (отрицательное значение)")]
+    [SerializeField] private float _pandemicHappinessPenalty = -5f;
+
+    [Tooltip("Снижение счастья при бунте (отрицательное значение)")]
+    [SerializeField] private float _riotHappinessPenalty = -10f;
+
     [Header("Текущее Событие")]
     [SerializeField] private BuildingEvent _currentEvent = new BuildingEvent();
 
@@ -153,6 +160,28 @@ public class EventAffected : MonoBehaviour
         {
             producer.ResumeProduction(); // Возобновляем производство
         }
+
+        // ✅ FIX: Восстанавливаем счастье после завершения события
+        // Возвращаем часть потерянного счастья (50% компенсация)
+        EventType endedType = CurrentEventType;
+        if (HappinessManager.Instance != null)
+        {
+            float compensation = 0f;
+            if (endedType == EventType.Pandemic)
+            {
+                compensation = -_pandemicHappinessPenalty * 0.5f; // Возвращаем 50% от штрафа
+            }
+            else if (endedType == EventType.Riot)
+            {
+                compensation = -_riotHappinessPenalty * 0.5f; // Возвращаем 50% от штрафа
+            }
+
+            if (compensation > 0)
+            {
+                HappinessManager.Instance.AddHappiness(compensation);
+                Debug.Log($"[EventAffected] {name}: Событие завершено, счастье частично восстановлено (+{compensation})");
+            }
+        }
     }
 
     /// <summary>
@@ -160,8 +189,16 @@ public class EventAffected : MonoBehaviour
     /// </summary>
     private void ApplyPandemicEffects()
     {
-        // TODO: Реализовать снижение счастья/налогов при пандемии
-        Debug.Log($"[EventAffected] {name}: Применены эффекты пандемии");
+        // ✅ FIX: Реализовано снижение счастья при пандемии
+        if (HappinessManager.Instance != null)
+        {
+            HappinessManager.Instance.AddHappiness(_pandemicHappinessPenalty);
+            Debug.Log($"[EventAffected] {name}: Пандемия снизила счастье на {_pandemicHappinessPenalty}");
+        }
+        else
+        {
+            Debug.LogWarning($"[EventAffected] {name}: HappinessManager не найден! Не могу снизить счастье.");
+        }
     }
 
     /// <summary>
@@ -177,8 +214,16 @@ public class EventAffected : MonoBehaviour
             Debug.Log($"[EventAffected] {name}: Производство остановлено из-за бунта");
         }
 
-        // TODO: Реализовать снижение счастья при бунте
-        Debug.Log($"[EventAffected] {name}: Применены эффекты бунта");
+        // ✅ FIX: Реализовано снижение счастья при бунте
+        if (HappinessManager.Instance != null)
+        {
+            HappinessManager.Instance.AddHappiness(_riotHappinessPenalty);
+            Debug.Log($"[EventAffected] {name}: Бунт снизил счастье на {_riotHappinessPenalty}");
+        }
+        else
+        {
+            Debug.LogWarning($"[EventAffected] {name}: HappinessManager не найден! Не могу снизить счастье.");
+        }
     }
 
     /// <summary>

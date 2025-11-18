@@ -221,10 +221,18 @@ public class BuildingRegistry : MonoBehaviour
     /// <summary>
     /// Принудительное пересканирование сцены (только для отладки!).
     /// Используется если что-то пошло не так с регистрацией.
+    ///
+    /// ⚠️ ВНИМАНИЕ: МЕДЛЕННАЯ ОПЕРАЦИЯ!
+    /// Вызывает FindObjectsByType 7 раз. При 500+ зданиях это может вызвать lag spike 100-300ms.
+    /// НИКОГДА не вызывайте этот метод в Update() или других горячих путях!
+    /// Используйте только через Inspector (ContextMenu) или при загрузке сцены.
     /// </summary>
     [ContextMenu("DEBUG: Force Rescan Scene")]
     public void ForceRescanScene()
     {
+        Debug.LogWarning("[BuildingRegistry] ⚠️ Начинается полное пересканирование сцены. Это медленная операция!");
+        float startTime = Time.realtimeSinceStartup;
+
         _allOutputs.Clear();
         _allInputs.Clear();
         _allWarehouses.Clear();
@@ -249,7 +257,8 @@ public class BuildingRegistry : MonoBehaviour
         _allBuildings.AddRange(buildings); // FIX #12
         _allProducers.AddRange(producers); // FIX #13
 
-        Debug.LogWarning($"[BuildingRegistry] Force rescan: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings, {_allResidences.Count} residences, {_allBuildings.Count} buildings, {_allProducers.Count} producers");
+        float elapsedMs = (Time.realtimeSinceStartup - startTime) * 1000f;
+        Debug.LogWarning($"[BuildingRegistry] Пересканирование завершено за {elapsedMs:F1}ms: {_allOutputs.Count} outputs, {_allInputs.Count} inputs, {_allWarehouses.Count} warehouses, {_allRoutings.Count} routings, {_allResidences.Count} residences, {_allBuildings.Count} buildings, {_allProducers.Count} producers");
     }
 
     // === СТАТИСТИКА (для UI/отладки) ===
