@@ -8,9 +8,12 @@ public class LogisticsManager : MonoBehaviour
     // --- Ссылки на системы ---
     private GridSystem _gridSystem;
     private RoadManager _roadManager;
-    
+
     // --- "Доска Заказов" ---
     private readonly List<ResourceRequest> _activeRequests = new List<ResourceRequest>();
+
+    // ISSUE #9 FIX: Группировка запросов по типу для O(1) доступа вместо O(n) Where().ToList()
+    private readonly Dictionary<ResourceType, List<ResourceRequest>> _requestsByType = new Dictionary<ResourceType, List<ResourceRequest>>();
 
     private void Awake()
     {
@@ -39,6 +42,14 @@ public class LogisticsManager : MonoBehaviour
         if (!_activeRequests.Contains(request))
         {
             _activeRequests.Add(request);
+
+            // ISSUE #9 FIX: Добавляем в словарь группировки
+            if (!_requestsByType.ContainsKey(request.RequestedType))
+            {
+                _requestsByType[request.RequestedType] = new List<ResourceRequest>();
+            }
+            _requestsByType[request.RequestedType].Add(request);
+
             Debug.Log($"[LogisticsManager] Новый запрос на {request.RequestedType} от {request.Requester.name} (Приоритет: {request.Priority})");
         }
     }
@@ -51,6 +62,19 @@ public class LogisticsManager : MonoBehaviour
         if (_activeRequests.Contains(request))
         {
             _activeRequests.Remove(request);
+
+            // ISSUE #9 FIX: Удаляем из словаря группировки
+            if (_requestsByType.TryGetValue(request.RequestedType, out var typeRequests))
+            {
+                typeRequests.Remove(request);
+
+                // Если список пуст, удаляем ключ из словаря
+                if (typeRequests.Count == 0)
+                {
+                    _requestsByType.Remove(request.RequestedType);
+                }
+            }
+
             Debug.Log($"[LogisticsManager] Запрос на {request.RequestedType} от {request.Requester.name} выполнен/отменен.");
         }
     }
@@ -71,9 +95,8 @@ public class LogisticsManager : MonoBehaviour
             return null; // Тележка сама не у дороги?
         }
             
-        // 2. Фильтруем запросы ... (без изменений)
-        var matchingRequests = _activeRequests.Where(r => r.RequestedType == resourceToDeliver).ToList();
-        if (matchingRequests.Count == 0)
+        // 2. ISSUE #9 FIX: Используем словарь вместо Where().ToList() для O(1) доступа
+        if (!_requestsByType.TryGetValue(resourceToDeliver, out var matchingRequests) || matchingRequests.Count == 0)
             return null; 
 
         // 3. Считаем расстояния от ВСЕХ "выходов" тележки

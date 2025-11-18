@@ -4,7 +4,10 @@ public class ResourceProducer : MonoBehaviour
 {
     [Tooltip("Данные о 'рецепте' (время, затраты, выход)")]
     public ResourceProductionData productionData;
-    
+
+    // ISSUE #10 FIX: Кэшированный словарь для O(1) доступа к inputCosts вместо O(n) Find
+    private Dictionary<ResourceType, ResourceCost> _inputCostLookup = new Dictionary<ResourceType, ResourceCost>();
+
     private BuildingInputInventory _inputInv;
     private BuildingOutputInventory _outputInv;
     [Header("Рабочая Сила")]
@@ -120,9 +123,32 @@ public class ResourceProducer : MonoBehaviour
         }
 
         WorkforceManager.Instance.RegisterProducer(this);
+
+        // ISSUE #10 FIX: Строим кэш inputCosts для быстрого доступа
+        RebuildInputCostLookup();
+
         _initialized = true;
 
         Debug.Log($"[Producer] {gameObject.name}: Инициализация завершена успешно");
+    }
+
+    /// <summary>
+    /// ISSUE #10 FIX: Строит словарь для O(1) доступа к inputCosts
+    /// </summary>
+    private void RebuildInputCostLookup()
+    {
+        _inputCostLookup.Clear();
+
+        if (productionData != null && productionData.inputCosts != null)
+        {
+            foreach (var cost in productionData.inputCosts)
+            {
+                if (cost != null)
+                {
+                    _inputCostLookup[cost.resourceType] = cost;
+                }
+            }
+        }
     }
     
     private void OnDestroy()
@@ -452,8 +478,9 @@ private void FindWarehouseAccess()
         float eff = GetFinalEfficiency();
         if (eff == 0) return 0f;
 
-        ResourceCost cost = productionData.inputCosts.Find(c => c.resourceType == type);
-        if (cost == null) return 0f;
+        // ISSUE #10 FIX: Используем Dictionary для O(1) вместо O(n) Find
+        if (!_inputCostLookup.TryGetValue(type, out var cost))
+            return 0f;
 
         float cyclesPerMinute = 60f / (productionData.cycleTimeSeconds / eff);
         return cyclesPerMinute * cost.amount;
